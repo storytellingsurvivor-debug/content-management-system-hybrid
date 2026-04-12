@@ -1,0 +1,17 @@
+---
+description: Protect Supabase usage in CMS admin workflows
+globs: **/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Supabase Safety Rules
+
+- Treat this CMS as admin tooling but still enforce least privilege by default.
+- Never place `service_role` keys or database passwords in browser code.
+- Prefer `url + anon key` for client connection; any privileged operation must go through server-side code.
+- Connection credentials must be ephemeral by default (in-memory state only).
+- On `Disconnect` or app close, clear active connection state and sensitive values.
+- Do not auto-persist credentials unless explicitly requested by the user.
+- Always display active environment (`STAGING` or `PROD`) in the UI.
+- PROD write actions must require explicit confirmation and clear visual warning.
+- If a change could risk main app data integrity, pause and ask for confirmation.

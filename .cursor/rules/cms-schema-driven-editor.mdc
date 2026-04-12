@@ -1,0 +1,26 @@
+---
+description: Enforce schema-driven blog form and markdown preview workflow
+globs: **/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Schema-Driven Blog Editor
+
+- After successful connection, introspect the `blogs` table schema before rendering editor fields.
+- Generate form controls from column metadata (type, nullability, default), then apply blog-specific overrides.
+- Keep the editor in a two-column content section:
+  - Left: form fields and metadata controls.
+  - Right: markdown preview.
+- Use `react-markdown` with `remark-gfm` for content preview.
+- Maintain a strict submit pipeline: validate -> preview available -> confirm -> submit.
+- Validate key fields before submit (`slug`, URLs, read time, required content).
+- For existing rows, load and map data into generated fields consistently.
+- For new rows, initialize sensible defaults without hiding required fields.
+- Keep submit actions explicit with clear labels (`Create`, `Update`, `Delete`).
+
+# Editor Contract Example
+
+```ts
+type EditorMode = "create" | "edit";
+type SubmitAction = "create" | "update" | "delete";
+```

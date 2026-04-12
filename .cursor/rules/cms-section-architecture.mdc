@@ -1,0 +1,29 @@
+---
+description: Enforce section-based CMS component architecture for TypeScript files
+globs: **/*.{ts,tsx}
+alwaysApply: false
+---
+
+# CMS Section Architecture
+
+- Build the CMS as a single admin page composed of ordered sections:
+  1. Environment Connection, 2) Articles, 3) Content Editor + Preview.
+- Each section must be a dedicated component folder, not inline in the page.
+- Minimum files per section component:
+  - `SectionName.tsx`
+  - `styles.ts`
+- Keep section concerns isolated: connection logic in connection section, article selection in articles section, editing logic in content section.
+- The page file should orchestrate state and section composition only; avoid large UI logic blocks in the page.
+- Use MUI layout primitives and `Paper` as the base visual container per section.
+- If requested behavior conflicts with this structure, ask for confirmation before deviating.
+
+# Expected Pattern
+
+```tsx
+// sections/ConnectionSection/ConnectionSection.tsx
+// sections/ConnectionSection/styles.ts
+// sections/ArticlesSection/ArticlesSection.tsx
+// sections/ArticlesSection/styles.ts
+// sections/ContentSection/ContentSection.tsx
+// sections/ContentSection/styles.ts
+```
