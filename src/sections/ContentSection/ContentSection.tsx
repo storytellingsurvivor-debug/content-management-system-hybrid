@@ -149,6 +149,7 @@ export function ContentSection({
   const previewLanguage = String(
     values.language ?? values.lang ?? values.locale ?? "",
   ).trim();
+  const previewSlug = String(values.slug ?? "").trim();
   const authorName = String(values.author_name ?? "Unknown Author").trim();
   const authorAvatarUrl = resolveFirstValidUrl(values, [
     "author_url",
@@ -333,13 +334,13 @@ export function ContentSection({
                   <Typography variant="h5" sx={{ mb: 0.5 }}>
                     {previewTitle}
                   </Typography>
-                  {values.slug && (
+                  {previewSlug && (
                     <Typography
                       variant="body2"
                       color="text.secondary"
                       sx={{ mb: 2 }}
                     >
-                      /{String(values.slug)}
+                      /{previewSlug}
                     </Typography>
                   )}
 

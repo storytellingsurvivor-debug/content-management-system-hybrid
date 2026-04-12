@@ -27,8 +27,7 @@ interface ArticlesSectionProps {
   columns: BlogColumnDefinition[];
   onSelectArticle: (value: string) => void;
   onCreateNew: () => void;
-  onRefresh: () => void;
-  x;
+  onRefresh: () => void | Promise<void>;
 }
 
 function articleOptionLabel(row: BlogRow): string {
