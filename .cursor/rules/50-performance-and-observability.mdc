@@ -1,0 +1,14 @@
+---
+description: Performance and observability standards for scalable systems
+alwaysApply: true
+---
+
+# Performance And Observability
+
+- Optimize based on measured bottlenecks, not assumptions.
+- Keep hot paths simple; reduce redundant allocations and repeated work.
+- Add instrumentation where behavior or latency needs visibility.
+- Ensure logs are structured, searchable, and safe (no sensitive data).
+- Track key signals: latency, error rate, throughput, and saturation.
+- Prefer graceful degradation and timeouts over hanging operations.
+- Document any major performance trade-off introduced by a change.

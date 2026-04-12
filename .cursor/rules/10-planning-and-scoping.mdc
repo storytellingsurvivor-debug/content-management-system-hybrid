@@ -1,0 +1,14 @@
+---
+description: Planning standards for scoped, reversible, and testable delivery
+alwaysApply: true
+---
+
+# Planning And Scoping
+
+- Start by clarifying desired outcome, constraints, and acceptance criteria.
+- Break work into small, verifiable steps with explicit dependencies.
+- Identify blast radius: files touched, runtime paths affected, and data impact.
+- For multi-path implementations, present options and recommend one with rationale.
+- Define rollback or safe-failure strategy for risky changes before execution.
+- Prefer incremental delivery over big-bang rewrites.
+- If context is insufficient, ask only critical questions that unblock execution.

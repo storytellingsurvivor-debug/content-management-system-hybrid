@@ -1,0 +1,14 @@
+---
+description: Verification rules for confidence-driven shipping
+alwaysApply: true
+---
+
+# Testing And Verification
+
+- Validate changes at the nearest useful level: unit, integration, then end-to-end.
+- Prefer deterministic tests with clear setup, intent, and assertions.
+- Test critical paths, edge cases, and failure modes, not only happy paths.
+- When full execution is not possible, provide concrete manual verification steps.
+- Treat flaky tests as defects; isolate and stabilize before trusting results.
+- Do not claim success without evidence (test output, runtime check, or lint pass).
+- Include regression coverage for every bug fix when feasible.

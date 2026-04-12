@@ -1,0 +1,15 @@
+---
+description: Frontend quality bar for usability, accessibility, and resilience
+globs: **/*.{tsx,jsx,css,scss,html}
+alwaysApply: false
+---
+
+# Frontend And UI Excellence
+
+- Prioritize usability: clear hierarchy, consistent spacing, and predictable states.
+- Include loading, empty, error, and success states for user-facing flows.
+- Build accessible UI: keyboard support, semantic elements, and clear labels.
+- Minimize layout shift and avoid blocking interactions unnecessarily.
+- Keep client state intentional; avoid duplicating sources of truth.
+- Prefer composable components with clear props contracts.
+- Ensure critical interactions are testable and observable.

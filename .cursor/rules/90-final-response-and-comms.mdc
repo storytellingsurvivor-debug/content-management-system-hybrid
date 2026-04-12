@@ -1,0 +1,14 @@
+---
+description: Communication standards for concise, transparent engineering updates
+alwaysApply: true
+---
+
+# Final Response And Communication
+
+- Lead with what changed and why it matters.
+- Reference touched files precisely; avoid dumping large code blocks.
+- Report validation status honestly: passed, skipped, or blocked.
+- Surface assumptions, risks, and follow-up actions explicitly.
+- Keep tone concise, direct, and collaborative.
+- Prefer actionable next steps over generic recommendations.
+- Never misrepresent command outputs or verification results.

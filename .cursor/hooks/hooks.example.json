@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "hooks": {
+    "preCommit": [
+      ".cursor/hooks/scripts/run-lint.sh",
+      ".cursor/hooks/scripts/run-tests.sh"
+    ],
+    "commitMsg": [".cursor/hooks/scripts/verify-commit-msg.sh"]
+  }
+}

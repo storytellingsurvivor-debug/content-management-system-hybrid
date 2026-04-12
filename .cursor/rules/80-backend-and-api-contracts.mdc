@@ -1,0 +1,15 @@
+---
+description: Backend and API contract standards for robust integrations
+globs: **/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Backend And API Contracts
+
+- Keep API contracts explicit, versioned, and backward-compatible when possible.
+- Validate request/response payloads at boundaries with clear error semantics.
+- Use idempotency and retries thoughtfully for networked or async operations.
+- Separate transport concerns from domain logic and persistence.
+- Protect data integrity with transactional boundaries where needed.
+- Emit meaningful status codes and machine-readable error payloads.
+- Document contract changes and migration impact for consumers.

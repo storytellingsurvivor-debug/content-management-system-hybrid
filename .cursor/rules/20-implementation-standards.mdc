@@ -1,0 +1,15 @@
+---
+description: Implementation standards for maintainable and production-ready code
+globs: **/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Implementation Standards
+
+- Write code that is obvious to maintainers; avoid hidden control flow.
+- Co-locate related logic and keep module boundaries intentional.
+- Prefer pure functions and dependency injection where practical.
+- Handle errors explicitly with actionable messages and consistent strategy.
+- Avoid unnecessary abstractions; extract only when reuse or clarity justifies it.
+- Keep naming domain-driven: business language over technical noise.
+- Add brief comments only for non-obvious decisions or invariants.

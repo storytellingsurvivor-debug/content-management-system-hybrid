@@ -1,0 +1,14 @@
+---
+description: Core execution principles for high-quality AI engineering work
+alwaysApply: true
+---
+
+# Core Principles
+
+- Optimize for correctness first, speed second, elegance third.
+- State assumptions when requirements are ambiguous; ask before risky decisions.
+- Make the smallest change that fully solves the problem, then harden edges.
+- Preserve existing behavior unless the request explicitly changes behavior.
+- Prefer explicit contracts, stable interfaces, and readable code over cleverness.
+- Keep security, privacy, and reliability as non-negotiable constraints.
+- Never hide uncertainty: surface trade-offs, residual risks, and validation status.

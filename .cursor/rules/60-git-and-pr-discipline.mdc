@@ -1,0 +1,14 @@
+---
+description: Version control and pull request discipline for clean collaboration
+alwaysApply: true
+---
+
+# Git And PR Discipline
+
+- Keep changes atomic: one coherent purpose per commit/PR.
+- Write commit messages that explain why, not only what changed.
+- Do not mix unrelated refactors with feature or bug-fix work.
+- Run lint/tests relevant to touched areas before finalizing.
+- Highlight risk, migration notes, and rollback strategy in PR context.
+- Respect branch safety: avoid forceful or destructive history rewrites.
+- Call out follow-up work explicitly instead of silently deferring it.
