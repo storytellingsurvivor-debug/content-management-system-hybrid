@@ -37,6 +37,7 @@ function getEnvVars(env: Env) {
 
 // Translates babylovegrowth field names → blog table columns.
 // babylovegrowth owns data quality — no transformation, just rename.
+// author_name, author_image_url, category, brand come from URL query params.
 function mapPayload(
   body: Record<string, unknown>,
   params: URLSearchParams,
@@ -44,15 +45,16 @@ function mapPayload(
   const markdown = String(body.content_markdown ?? "");
   const mapped: Record<string, unknown> = {
     slug: body.slug,
+    title: body.title,
     content: markdown,
-    created_at: body.createdAt ?? new Date().toISOString(),
-    read_in_minutes: estimateReadMinutes(markdown),
+    cover_image_url: body.heroImageUrl,
+    language: body.languageCode,
+    seo_keywords: body.metaDescription ?? null,
+    read_time_in_minutes: estimateReadMinutes(markdown),
+    is_live: false,
   };
 
-  const heroUrl = String(body.heroImageUrl ?? "").trim();
-  if (heroUrl) mapped.cover_url = heroUrl;
-
-  // brand, category, and any extra metadata come from URL query params
+  // author_name, author_image_url, category, brand come from URL query params
   params.forEach((value, key) => {
     mapped[key] = value;
   });
@@ -86,9 +88,9 @@ export async function POST(
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  if (!body.slug || !body.content_markdown) {
+  if (!body.slug || !body.content_markdown || !body.title || !body.heroImageUrl || !body.languageCode) {
     return Response.json(
-      { error: "Missing required fields: slug, content_markdown" },
+      { error: "Missing required fields: slug, title, content_markdown, heroImageUrl, languageCode" },
       { status: 400 },
     );
   }
