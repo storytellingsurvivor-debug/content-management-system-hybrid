@@ -19,7 +19,7 @@ export async function POST(request: Request): Promise<Response> {
     title: body.title,
     slug: body.slug,
     cover_image_url: body.heroImageUrl,
-    content: body.content_html,
+    content: body.content_markdown,
     language: body.languageCode,
     seo_keywords: body.metaDescription ?? null,
     created_at: body.createdAt,
