@@ -5,19 +5,27 @@ export const maxDuration = 30;
 
 type Env = "staging" | "prod";
 
-// Fields set explicitly from the babylovegrowth payload — never overrideable from URL params.
-// Prevents accidental id/slug injection that would cause silent primary key conflicts.
-const PROTECTED_FIELDS = new Set([
-  "id",
-  "slug",
-  "title",
-  "content",
-  "cover_image_url",
-  "language",
-  "seo_keywords",
-  "read_time_in_minutes",
-  "is_live",
-  "created_at",
+// 1. Explicitly define the payload interface.
+// This resolves the TypeScript "Property does not exist" errors that block deployment.
+interface WebhookPayload {
+  slug?: string;
+  title?: string;
+  content_markdown?: string;
+  heroImageUrl?: string;
+  languageCode?: string;
+  metaDescription?: string | null;
+  createdAt?: string; // Pulled from your example payload
+  [key: string]: any;
+}
+
+// 2. Whitelist allowed query parameters instead of blacklisting.
+// This guarantees that random tracking query params appended by the webhook provider 
+// never reach Supabase and crash the database with a "Column does not exist" error.
+const ALLOWED_URL_PARAMS = new Set([
+  "brand",
+  "category",
+  "author_name",
+  "author_image_url",
 ]);
 
 function isTokenValid(incoming: string, expected: string): boolean {
@@ -50,11 +58,11 @@ function getEnvVars(env: Env) {
 }
 
 function mapPayload(
-  body: Record<string, unknown>,
+  body: WebhookPayload,
   params: URLSearchParams,
-): Record<string, unknown> {
+): Record<string, any> {
   const markdown = String(body.content_markdown ?? "");
-  const mapped: Record<string, unknown> = {
+  const mapped: Record<string, any> = {
     slug: body.slug,
     title: body.title,
     content: markdown,
@@ -65,10 +73,14 @@ function mapPayload(
     is_live: false,
   };
 
-  // brand, category, author_name, author_image_url come from URL query params.
-  // PROTECTED_FIELDS are skipped so URL params can never override payload-mapped fields.
+  // Sync original creation date from payload if provided
+  if (body.createdAt) {
+    mapped.created_at = body.createdAt;
+  }
+
+  // Safely map only whitelisted URL query params overriding default DB values
   params.forEach((value, key) => {
-    if (!PROTECTED_FIELDS.has(key)) {
+    if (ALLOWED_URL_PARAMS.has(key)) {
       mapped[key] = value;
     }
   });
@@ -95,7 +107,7 @@ export async function POST(
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: Record<string, unknown>;
+  let body: WebhookPayload;
   try {
     body = await request.json();
   } catch {
