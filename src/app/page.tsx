@@ -118,6 +118,7 @@ export default function Home() {
   const [connectionMeta, setConnectionMeta] = useState<string>("idle");
   const isConnected = connectionView.status === "connected";
   const hasAutoConnectedRef = useRef(false);
+  const prefillRef = useRef<Record<string, unknown> | null>(null);
   const handleConnectRef = useRef<
     (nextValues?: Partial<ConnectionFormValues>) => Promise<void>
   >(async () => {});
@@ -452,6 +453,35 @@ export default function Home() {
     connectionValues.supabaseUrl,
     connectionValues.supabaseAnonKey,
   ]);
+
+  // Decode ?prefill=<base64url-JSON> on mount and store for later application
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get("prefill");
+    if (!raw) return;
+    try {
+      const decoded = JSON.parse(atob(decodeURIComponent(raw)));
+      if (decoded && typeof decoded === "object" && !Array.isArray(decoded)) {
+        prefillRef.current = decoded as Record<string, unknown>;
+      }
+    } catch {
+      console.warn("Invalid prefill param — skipping.");
+    }
+  }, []);
+
+  // Apply prefill to the form once the Supabase connection is established
+  useEffect(() => {
+    if (connectionView.status !== "connected") return;
+    if (!prefillRef.current) return;
+    const decoded = prefillRef.current;
+    prefillRef.current = null;
+    setFormValues((prev) => ({ ...prev, ...decoded }));
+    setEditorMode("create");
+    setSelectedArticleId("");
+    setFeedbackMessage(
+      "Form pre-filled from URL — review and click Create to publish.",
+    );
+  }, [connectionView.status]);
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
