@@ -1,10 +1,24 @@
 import { timingSafeEqual } from "crypto";
 import { createClient } from "@supabase/supabase-js";
 
-// Give enough time for Supabase round-trip on large articles
 export const maxDuration = 30;
 
 type Env = "staging" | "prod";
+
+// Fields set explicitly from the babylovegrowth payload — never overrideable from URL params.
+// Prevents accidental id/slug injection that would cause silent primary key conflicts.
+const PROTECTED_FIELDS = new Set([
+  "id",
+  "slug",
+  "title",
+  "content",
+  "cover_image_url",
+  "language",
+  "seo_keywords",
+  "read_time_in_minutes",
+  "is_live",
+  "created_at",
+]);
 
 function isTokenValid(incoming: string, expected: string): boolean {
   if (!expected || incoming.length !== expected.length) return false;
@@ -35,9 +49,6 @@ function getEnvVars(env: Env) {
   };
 }
 
-// Translates babylovegrowth field names → blog table columns.
-// babylovegrowth owns data quality — no transformation, just rename.
-// author_name, author_image_url, category, brand come from URL query params.
 function mapPayload(
   body: Record<string, unknown>,
   params: URLSearchParams,
@@ -54,9 +65,12 @@ function mapPayload(
     is_live: false,
   };
 
-  // author_name, author_image_url, category, brand come from URL query params
+  // brand, category, author_name, author_image_url come from URL query params.
+  // PROTECTED_FIELDS are skipped so URL params can never override payload-mapped fields.
   params.forEach((value, key) => {
-    mapped[key] = value;
+    if (!PROTECTED_FIELDS.has(key)) {
+      mapped[key] = value;
+    }
   });
 
   return mapped;
@@ -88,9 +102,18 @@ export async function POST(
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  if (!body.slug || !body.content_markdown || !body.title || !body.heroImageUrl || !body.languageCode) {
+  if (
+    !body.slug ||
+    !body.content_markdown ||
+    !body.title ||
+    !body.heroImageUrl ||
+    !body.languageCode
+  ) {
     return Response.json(
-      { error: "Missing required fields: slug, title, content_markdown, heroImageUrl, languageCode" },
+      {
+        error:
+          "Missing required fields: slug, title, content_markdown, heroImageUrl, languageCode",
+      },
       { status: 400 },
     );
   }
@@ -106,6 +129,9 @@ export async function POST(
     auth: { persistSession: false },
   });
 
+  console.log(`[webhook:${envParam}] target=${supabaseUrl.slice(0, 40)}`);
+  console.log(`[webhook:${envParam}] payload=${JSON.stringify(mapped)}`);
+
   const { data, error } = await supabase
     .from("blog")
     .insert(mapped)
@@ -113,15 +139,43 @@ export async function POST(
     .single();
 
   if (error) {
+    console.error(
+      `[webhook:${envParam}] error code=${error.code} details="${error.details}" message=${error.message}`,
+    );
+
     if (error.code === "23505") {
-      // Already inserted — idempotent 200 so babylovegrowth doesn't mark as failed
+      // Look up by slug — if this returns null, the conflict was on a different
+      // constraint (likely the primary key), not the slug.
+      const { data: existing } = await supabase
+        .from("blog")
+        .select("id, slug, is_live")
+        .eq("slug", String(mapped.slug))
+        .maybeSingle();
+
+      console.log(
+        `[webhook:${envParam}] duplicate lookup=${JSON.stringify(existing)}`,
+      );
+
       return Response.json(
-        { message: "Article already exists", slug: mapped.slug },
+        {
+          message: existing
+            ? "Article already exists"
+            : "Duplicate key conflict (not slug)",
+          constraint: error.details,
+          existing,
+        },
         { status: 200 },
       );
     }
-    return Response.json({ error: error.message }, { status: 500 });
+
+    return Response.json(
+      { error: error.message, details: error.details },
+      { status: 500 },
+    );
   }
 
+  console.log(
+    `[webhook:${envParam}] inserted id=${data?.id} slug=${data?.slug}`,
+  );
   return Response.json({ article: data }, { status: 200 });
 }
