@@ -148,7 +148,11 @@ export default function Home() {
   const loadArticlesAndSchema = async (client: SupabaseClient) => {
     setIsArticlesLoading(true);
 
-    const { data, error } = await client.from("blog").select("*").limit(100);
+    const { data, error } = await client
+      .from("blog")
+      .select("*")
+      .order("id", { ascending: false })
+      .limit(100);
     if (error) {
       setIsArticlesLoading(false);
       throw error;
