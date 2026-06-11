@@ -21,7 +21,11 @@ export async function POST(request: Request): Promise<Response> {
     cover_image_url: body.heroImageUrl,
     content: body.content_markdown,
     language: body.languageCode,
-    seo_keywords: body.metaDescription ?? null,
+    seo_keywords:
+      Array.isArray(body.keywords) && body.keywords.length > 0
+        ? body.keywords.join(", ")
+        : null,
+    meta_description: body.metaDescription,
     created_at: body.createdAt,
     author_name: "Milo",
     author_image_url:
