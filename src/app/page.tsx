@@ -693,22 +693,17 @@ export default function Home() {
             "Update requires id or slug in current template values.",
           );
         }
-        const { data, error, count } = await supabaseClient
+        const { error, count } = await supabaseClient
           .from(TEMPLATE_TABLE)
           .update(payload, { count: "exact" })
-          .eq(filter.field, filter.value)
-          .select("*")
-          .maybeSingle();
+          .eq(filter.field, filter.value);
         if (error) throw error;
         if (count === 0) {
           throw new Error(
-            `No template matched ${filter.field}="${filter.value}". It may have been deleted or modified elsewhere.`,
+            `Update affected 0 rows. The row matching ${filter.field}="${filter.value}" is either gone or the connected key is not allowed to update it (likely RLS: no UPDATE policy for the anon role on ${TEMPLATE_TABLE}).`,
           );
         }
 
-        if (data) {
-          setTemplateFormValues(data as BlogRow);
-        }
         setFeedbackMessage("Template updated successfully.");
       }
 
