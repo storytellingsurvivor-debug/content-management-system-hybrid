@@ -11,12 +11,12 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutlined";
 import type { BlogColumnDefinition, BlogRow } from "@/types/blog";
+import { ArticleCard } from "./ArticleCard";
 import {
   controlsGridSx,
   infoRowSx,
+  scrollRowSx,
   sectionHeaderSx,
   sectionPaperSx,
 } from "./styles";
@@ -32,15 +32,6 @@ interface ArticlesSectionProps {
   onRefresh: () => void | Promise<void>;
 }
 
-function articleOptionLabel(row: BlogRow): string {
-  const slug = String(row.slug ?? "").trim();
-  const id = String(row.id ?? "").trim();
-  if (slug && id) return `${slug} (#${id})`;
-  if (slug) return slug;
-  if (id) return `Article #${id}`;
-  return "Untitled article";
-}
-
 function articleOptionValue(row: BlogRow): string {
   const id = String(row.id ?? "").trim();
   if (id) return `id:${id}`;
@@ -48,8 +39,14 @@ function articleOptionValue(row: BlogRow): string {
   return slug ? `slug:${slug}` : "";
 }
 
-function isArticleLive(row: BlogRow): boolean {
-  return row.is_live === true;
+function pickField(row: BlogRow, ...keys: string[]): string {
+  for (const key of keys) {
+    const value = row[key];
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return "";
 }
 
 export function ArticlesSection({
@@ -63,23 +60,45 @@ export function ArticlesSection({
   onRefresh,
 }: ArticlesSectionProps) {
   const [brandFilter, setBrandFilter] = useState<string>("");
+  const [languageFilter, setLanguageFilter] = useState<string>("");
 
   const distinctBrands = useMemo(() => {
     return Array.from(
       new Set(
         articles
-          .map((article) => String(article.brand ?? "").trim())
+          .map((article) => pickField(article, "brand"))
+          .filter((value) => value.length > 0),
+      ),
+    ).sort((a, b) => a.localeCompare(b));
+  }, [articles]);
+
+  const distinctLanguages = useMemo(() => {
+    return Array.from(
+      new Set(
+        articles
+          .map((article) => pickField(article, "language", "lang", "locale"))
           .filter((value) => value.length > 0),
       ),
     ).sort((a, b) => a.localeCompare(b));
   }, [articles]);
 
   const visibleArticles = useMemo(() => {
-    if (!brandFilter) return articles;
-    return articles.filter(
-      (article) => String(article.brand ?? "").trim() === brandFilter,
-    );
-  }, [articles, brandFilter]);
+    return articles.filter((article) => {
+      if (
+        brandFilter &&
+        pickField(article, "brand") !== brandFilter
+      ) {
+        return false;
+      }
+      if (
+        languageFilter &&
+        pickField(article, "language", "lang", "locale") !== languageFilter
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [articles, brandFilter, languageFilter]);
 
   return (
     <Paper elevation={2} sx={sectionPaperSx}>
@@ -112,47 +131,18 @@ export function ArticlesSection({
 
             <TextField
               select
-              label="Existing article"
-              value={selectedArticleId}
-              onChange={(event) => onSelectArticle(event.target.value)}
-              disabled={isLoading || visibleArticles.length === 0}
+              label="Filter by language"
+              value={languageFilter}
+              onChange={(event) => setLanguageFilter(event.target.value)}
+              disabled={isLoading || distinctLanguages.length === 0}
               fullWidth
             >
-              <MenuItem value="">No article selected</MenuItem>
-              {visibleArticles.map((article) => {
-                const value = articleOptionValue(article);
-                if (!value) return null;
-                const live = isArticleLive(article);
-                return (
-                  <MenuItem key={value} value={value}>
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1,
-                        width: "100%",
-                      }}
-                    >
-                      {live ? (
-                        <CheckCircleIcon
-                          fontSize="small"
-                          color="success"
-                          aria-label="Live"
-                          titleAccess="Live"
-                        />
-                      ) : (
-                        <RemoveCircleOutlineIcon
-                          fontSize="small"
-                          sx={{ color: "text.disabled" }}
-                          aria-label="Not live"
-                          titleAccess="Not live"
-                        />
-                      )}
-                      <Box component="span">{articleOptionLabel(article)}</Box>
-                    </Box>
-                  </MenuItem>
-                );
-              })}
+              <MenuItem value="">All languages</MenuItem>
+              {distinctLanguages.map((language) => (
+                <MenuItem key={language} value={language}>
+                  {language.toUpperCase()}
+                </MenuItem>
+              ))}
             </TextField>
 
             <Button variant="outlined" onClick={onRefresh} disabled={isLoading}>
@@ -176,7 +166,32 @@ export function ArticlesSection({
               label={`${columns.length} field(s) detected`}
               variant="outlined"
             />
+            {selectedArticleId && (
+              <Chip
+                label="Clear selection"
+                onDelete={() => onSelectArticle("")}
+                color="primary"
+                variant="outlined"
+              />
+            )}
           </Box>
+
+          {visibleArticles.length > 0 && (
+            <Box sx={scrollRowSx} role="listbox" aria-label="Articles">
+              {visibleArticles.map((article) => {
+                const value = articleOptionValue(article);
+                if (!value) return null;
+                return (
+                  <ArticleCard
+                    key={value}
+                    article={article}
+                    isSelected={value === selectedArticleId}
+                    onSelect={() => onSelectArticle(value)}
+                  />
+                );
+              })}
+            </Box>
+          )}
 
           {!isLoading && articles.length === 0 && (
             <Alert severity="warning" sx={{ mt: 2 }}>
@@ -188,7 +203,7 @@ export function ArticlesSection({
             articles.length > 0 &&
             visibleArticles.length === 0 && (
               <Alert severity="info" sx={{ mt: 2 }}>
-                No rows match the selected brand filter.
+                No rows match the selected filters.
               </Alert>
             )}
         </>
