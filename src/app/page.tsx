@@ -7,6 +7,7 @@ import { ArticlesSection } from "@/sections/ArticlesSection/ArticlesSection";
 import { BucketSection } from "@/sections/BucketSection/BucketSection";
 import { ConnectionSection } from "@/sections/ConnectionSection/ConnectionSection";
 import { ContentSection } from "@/sections/ContentSection/ContentSection";
+import { HappySpotsSection } from "@/sections/HappySpotsSection/HappySpotsSection";
 import { TemplateEditorSection } from "@/sections/TemplateEditorSection/TemplateEditorSection";
 import { TemplatesSection } from "@/sections/TemplatesSection/TemplatesSection";
 import {
@@ -33,7 +34,7 @@ import type {
   ConnectionViewState,
 } from "@/types/connection";
 
-type WorkspaceTab = "blog" | "templates";
+type WorkspaceTab = "blog" | "templates" | "happy";
 
 const TEMPLATE_DEFAULTS: Record<string, unknown> = {
   brand: "happy",
@@ -823,10 +824,11 @@ export default function Home() {
         >
           <Tab label="Blog articles" value="blog" />
           <Tab label="Hope Wall templates" value="templates" />
+          <Tab label="Happy Spots" value="happy" />
         </Tabs>
       </Box>
 
-      {activeTab === "blog" ? (
+      {activeTab === "blog" && (
         <>
           <ArticlesSection
             isConnected={isConnected}
@@ -850,7 +852,9 @@ export default function Home() {
             onSubmit={handleSubmit}
           />
         </>
-      ) : (
+      )}
+
+      {activeTab === "templates" && (
         <>
           {templatesUnavailable && (
             <Alert severity="warning" sx={{ mb: 2 }}>
@@ -880,6 +884,15 @@ export default function Home() {
             onSubmit={handleTemplateSubmit}
           />
         </>
+      )}
+
+      {activeTab === "happy" && (
+        <HappySpotsSection
+          isConnected={isConnected}
+          client={supabaseClient}
+          environment={connectionValues.environment}
+          onFeedback={setFeedbackMessage}
+        />
       )}
 
       <BucketSection isConnected={isConnected} client={supabaseClient} />

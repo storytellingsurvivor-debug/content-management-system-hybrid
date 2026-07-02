@@ -31,6 +31,9 @@ interface TemplatesSectionProps {
   onSelectTemplate: (value: string) => void;
   onCreateNew: () => void;
   onRefresh: () => void | Promise<void>;
+  title?: string;
+  tableName?: string;
+  showBrandFilter?: boolean;
 }
 
 function templateOptionValue(row: BlogRow): string {
@@ -59,6 +62,9 @@ export function TemplatesSection({
   onSelectTemplate,
   onCreateNew,
   onRefresh,
+  title = "2. Templates",
+  tableName = TEMPLATE_TABLE,
+  showBrandFilter = true,
 }: TemplatesSectionProps) {
   const [brandFilter, setBrandFilter] = useState<string>("");
   const [languageFilter, setLanguageFilter] = useState<string>("");
@@ -101,7 +107,7 @@ export function TemplatesSection({
   return (
     <Paper elevation={2} sx={sectionPaperSx}>
       <Typography variant="h6" sx={sectionHeaderSx}>
-        2. Templates
+        {title}
       </Typography>
 
       {!isConnected ? (
@@ -110,22 +116,31 @@ export function TemplatesSection({
         </Alert>
       ) : (
         <>
-          <Box sx={controlsGridSx}>
-            <TextField
-              select
-              label="Filter by brand"
-              value={brandFilter}
-              onChange={(event) => setBrandFilter(event.target.value)}
-              disabled={isLoading || distinctBrands.length === 0}
-              fullWidth
-            >
-              <MenuItem value="">All brands</MenuItem>
-              {distinctBrands.map((brand) => (
-                <MenuItem key={brand} value={brand}>
-                  {brand}
-                </MenuItem>
-              ))}
-            </TextField>
+          <Box
+            sx={{
+              ...(controlsGridSx as object),
+              ...(showBrandFilter
+                ? {}
+                : { gridTemplateColumns: { xs: "1fr", md: "1fr auto auto" } }),
+            }}
+          >
+            {showBrandFilter && (
+              <TextField
+                select
+                label="Filter by brand"
+                value={brandFilter}
+                onChange={(event) => setBrandFilter(event.target.value)}
+                disabled={isLoading || distinctBrands.length === 0}
+                fullWidth
+              >
+                <MenuItem value="">All brands</MenuItem>
+                {distinctBrands.map((brand) => (
+                  <MenuItem key={brand} value={brand}>
+                    {brand}
+                  </MenuItem>
+                ))}
+              </TextField>
+            )}
 
             <TextField
               select
@@ -193,8 +208,8 @@ export function TemplatesSection({
 
           {!isLoading && templates.length === 0 && (
             <Alert severity="warning" sx={{ mt: 2 }}>
-              Connected, but no rows were returned from table `{TEMPLATE_TABLE}
-              `. Verify data exists and anon SELECT policy allows these rows.
+              Connected, but no rows were returned from table `{tableName}`.
+              Verify data exists and anon SELECT policy allows these rows.
             </Alert>
           )}
           {!isLoading &&

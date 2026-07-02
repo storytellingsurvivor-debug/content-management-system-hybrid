@@ -4,7 +4,10 @@ export type FieldUiType =
   | "boolean"
   | "markdown"
   | "url"
-  | "datetime";
+  | "datetime"
+  | "json"
+  | "stringArray"
+  | "numberArray";
 
 export interface BlogColumnDefinition {
   name: string;

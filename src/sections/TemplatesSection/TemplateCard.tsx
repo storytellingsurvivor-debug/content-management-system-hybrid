@@ -85,8 +85,10 @@ export function TemplateCard({
   const slug = pickString(template, "slug");
   const brand = pickString(template, "brand");
   const language = pickString(template, "language", "lang", "locale");
-  const subtitle = pickString(template, "hero_subtitle");
+  const subtitle = pickString(template, "hero_subtitle", "description");
   const cover = pickCoverUrl(template);
+  const coverColor = pickString(template, "color", "background_color");
+  const emoji = pickString(template, "emoji");
   const createdAt = formatDate(template.created_at);
   const idLabel = String(template.id ?? "").trim();
 
@@ -104,7 +106,10 @@ export function TemplateCard({
         onClick={onSelect}
         sx={{ display: "flex", flexDirection: "column", alignItems: "stretch" }}
       >
-        <Box sx={cardMediaWrapSx}>
+        <Box
+          sx={cardMediaWrapSx}
+          style={!cover && coverColor ? { backgroundColor: coverColor } : undefined}
+        >
           {cover ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -118,6 +123,20 @@ export function TemplateCard({
                 display: "block",
               }}
             />
+          ) : coverColor ? (
+            <Box
+              sx={{
+                width: "100%",
+                height: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 44,
+                lineHeight: 1,
+              }}
+            >
+              {emoji}
+            </Box>
           ) : (
             <Box
               sx={{
