@@ -92,7 +92,7 @@ export const HAPPY_TABLES: Record<"spots" | "tags", HappyTableConfig> = {
 };
 
 const MULTILINE_UI_TYPES = new Set(["markdown", "json", "stringArray", "numberArray"]);
-const MULTILINE_NAMES = new Set(["note", "description", "metadata_description"]);
+const MULTILINE_NAMES = new Set(["note", "description", "intro", "metadata_description"]);
 
 export function isMultilineField(column: BlogColumnDefinition): boolean {
   return MULTILINE_UI_TYPES.has(column.uiType) || MULTILINE_NAMES.has(column.name);
@@ -120,6 +120,13 @@ export function rowToForm(
     } else if (column.uiType === "json") {
       form[column.name] =
         value && typeof value === "object" ? JSON.stringify(value, null, 2) : "";
+    } else if (
+      column.uiType === "datetime" &&
+      !column.readOnly &&
+      (value === null || value === undefined)
+    ) {
+      // Editable datetime fields (e.g. created_at) default to now on create.
+      form[column.name] = new Date().toISOString();
     } else if (value === null || value === undefined) {
       form[column.name] = "";
     } else {

@@ -7,6 +7,7 @@ import { ArticlesSection } from "@/sections/ArticlesSection/ArticlesSection";
 import { BucketSection } from "@/sections/BucketSection/BucketSection";
 import { ConnectionSection } from "@/sections/ConnectionSection/ConnectionSection";
 import { ContentSection } from "@/sections/ContentSection/ContentSection";
+import { HappyDatesSection } from "@/sections/HappyDatesSection/HappyDatesSection";
 import { HappySpotsSection } from "@/sections/HappySpotsSection/HappySpotsSection";
 import { TemplateEditorSection } from "@/sections/TemplateEditorSection/TemplateEditorSection";
 import { TemplatesSection } from "@/sections/TemplatesSection/TemplatesSection";
@@ -34,7 +35,7 @@ import type {
   ConnectionViewState,
 } from "@/types/connection";
 
-type WorkspaceTab = "blog" | "templates" | "happy";
+type WorkspaceTab = "blog" | "templates" | "happy" | "happyDates";
 
 const TEMPLATE_DEFAULTS: Record<string, unknown> = {
   brand: "happy",
@@ -825,6 +826,7 @@ export default function Home() {
           <Tab label="Blog articles" value="blog" />
           <Tab label="Hope Wall templates" value="templates" />
           <Tab label="Happy Spots" value="happy" />
+          <Tab label="Happy Dates" value="happyDates" />
         </Tabs>
       </Box>
 
@@ -888,6 +890,15 @@ export default function Home() {
 
       {activeTab === "happy" && (
         <HappySpotsSection
+          isConnected={isConnected}
+          client={supabaseClient}
+          environment={connectionValues.environment}
+          onFeedback={setFeedbackMessage}
+        />
+      )}
+
+      {activeTab === "happyDates" && (
+        <HappyDatesSection
           isConnected={isConnected}
           client={supabaseClient}
           environment={connectionValues.environment}

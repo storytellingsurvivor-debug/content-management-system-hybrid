@@ -42,6 +42,13 @@ interface TagOption {
   label: string;
 }
 
+// Maps a FK column (e.g. main_tag_id, tag_ids, category_id) to a dropdown of the
+// related rows. `multiple` renders a multi-select stored as a newline list.
+export interface RelationSelect {
+  options: TagOption[];
+  multiple: boolean;
+}
+
 interface HappyTableEditorProps {
   title: string;
   isConnected: boolean;
@@ -51,7 +58,7 @@ interface HappyTableEditorProps {
   groups: FieldGroup[];
   values: BlogRow;
   validationError: string | null;
-  tagOptions?: TagOption[];
+  relationSelects?: Record<string, RelationSelect>;
   onFieldChange: (key: string, value: unknown) => void;
   onSubmit: (action: SubmitAction) => void;
 }
@@ -130,7 +137,7 @@ export function HappyTableEditor({
   groups,
   values,
   validationError,
-  tagOptions = [],
+  relationSelects = {},
   onFieldChange,
   onSubmit,
 }: HappyTableEditorProps) {
@@ -139,16 +146,20 @@ export function HappyTableEditor({
   const otherColumns = columns.filter(
     (column) => !groupedNames.has(column.name),
   );
-  const tagLabelById = new Map(
-    tagOptions.map((option) => [option.value, option.label]),
-  );
-  const hasTagOptions = tagOptions.length > 0;
+  // One label lookup across every relation (tags, categories, …) for the preview.
+  const relationLabelById = new Map<string, string>();
+  for (const relation of Object.values(relationSelects)) {
+    for (const option of relation.options) {
+      relationLabelById.set(option.value, option.label);
+    }
+  }
 
   const renderField = (column: BlogColumnDefinition) => {
     const value = values[column.name];
 
-    // main_tag_id / tag_ids resolve to dropdowns of the existing tags.
-    if (hasTagOptions && column.name === "main_tag_id") {
+    // FK columns (main_tag_id, tag_ids, category_id, …) become dropdowns.
+    const relation = relationSelects[column.name];
+    if (relation && !relation.multiple) {
       return (
         <TextField
           key={column.name}
@@ -156,11 +167,11 @@ export function HappyTableEditor({
           label={column.label}
           value={String(value ?? "")}
           onChange={(event) => onFieldChange(column.name, event.target.value)}
-          helperText="Select the main tag"
+          helperText="Select one"
           fullWidth
         >
           <MenuItem value="">None</MenuItem>
-          {tagOptions.map((option) => (
+          {relation.options.map((option) => (
             <MenuItem key={option.value} value={option.value}>
               {option.label}
             </MenuItem>
@@ -169,7 +180,7 @@ export function HappyTableEditor({
       );
     }
 
-    if (hasTagOptions && column.name === "tag_ids") {
+    if (relation && relation.multiple) {
       const selected = listItems(value);
       return (
         <TextField
@@ -188,16 +199,16 @@ export function HappyTableEditor({
               renderValue: (selectedIds) => (
                 <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
                   {(selectedIds as string[]).map((id) => (
-                    <Chip key={id} size="small" label={tagLabelById.get(id) ?? id} />
+                    <Chip key={id} size="small" label={relationLabelById.get(id) ?? id} />
                   ))}
                 </Box>
               ),
             },
           }}
-          helperText="Select one or more tags"
+          helperText="Select one or more"
           fullWidth
         >
-          {tagOptions.map((option) => (
+          {relation.options.map((option) => (
             <MenuItem key={option.value} value={option.value}>
               {option.label}
             </MenuItem>
@@ -300,10 +311,11 @@ export function HappyTableEditor({
   const metadataTitle = str(values.metadata_title);
   const metadataDescription = str(values.metadata_description);
   const metadataKeywords = str(values.metadata_keywords);
-  const mainTagLabel = tagLabelById.get(str(values.main_tag_id));
+  const mainTagLabel = relationLabelById.get(str(values.main_tag_id));
   const tagLabels = listItems(values.tag_ids).map(
-    (id) => tagLabelById.get(id) ?? `#${id}`,
+    (id) => relationLabelById.get(id) ?? `#${id}`,
   );
+  const categoryLabel = relationLabelById.get(str(values.category_id));
   const articleSlugs = listItems(values.article_blog_slugs);
 
   return (
@@ -345,6 +357,9 @@ export function HappyTableEditor({
                     )}
                     {language && <Chip size="small" label={language.toUpperCase()} />}
                     {type && <Chip size="small" label={type} variant="outlined" />}
+                    {categoryLabel && (
+                      <Chip size="small" label={categoryLabel} variant="outlined" />
+                    )}
                     {isMain && <Chip size="small" label="Main" color="secondary" />}
                     <Chip
                       size="small"

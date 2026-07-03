@@ -4,46 +4,53 @@ import { useEffect, useMemo, useState } from "react";
 import { Alert, Box, Tab, Tabs } from "@mui/material";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { EnvironmentLabel } from "@/types/connection";
-import { HAPPY_TABLES } from "@/lib/happySpotSchema";
+import { HAPPY_DATE_TABLES } from "@/lib/happyDateSchema";
 import { TemplatesSection } from "@/sections/TemplatesSection/TemplatesSection";
-import { HappyTableEditor } from "./HappyTableEditor";
-import { useHappyTable } from "./useHappyTable";
+import { HappyTableEditor } from "@/sections/HappySpotsSection/HappyTableEditor";
+import { useHappyTable } from "@/sections/HappySpotsSection/useHappyTable";
 
-interface HappySpotsSectionProps {
+interface HappyDatesSectionProps {
   isConnected: boolean;
   client: SupabaseClient | null;
   environment: EnvironmentLabel;
   onFeedback: (message: string | null) => void;
 }
 
-type HappySubTab = "spots" | "tags";
+type HappyDateSubTab = "dates" | "categories";
 
-export function HappySpotsSection({
+export function HappyDatesSection({
   isConnected,
   client,
   environment,
   onFeedback,
-}: HappySpotsSectionProps) {
-  const [subTab, setSubTab] = useState<HappySubTab>("spots");
+}: HappyDatesSectionProps) {
+  const [subTab, setSubTab] = useState<HappyDateSubTab>("dates");
 
-  const spots = useHappyTable(client, HAPPY_TABLES.spots, environment, onFeedback);
-  const tags = useHappyTable(client, HAPPY_TABLES.tags, environment, onFeedback);
+  const dates = useHappyTable(client, HAPPY_DATE_TABLES.dates, environment, onFeedback);
+  const categories = useHappyTable(client, HAPPY_DATE_TABLES.categories, environment, onFeedback);
 
   useEffect(() => {
     if (!isConnected || !client) return;
-    void spots.load();
-    void tags.load();
+    void dates.load();
+    void categories.load();
     // Load both once connected; the hook callbacks are stable per client.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected, client]);
 
-  const active = subTab === "spots" ? spots : tags;
-  const config = HAPPY_TABLES[subTab];
+  const active = subTab === "dates" ? dates : categories;
+  const config = HAPPY_DATE_TABLES[subTab];
 
-  // Existing tags become the options for the spot's main_tag_id / tag_ids dropdowns.
-  const tagOptions = useMemo(
+  // Existing categories become the options for the date's category_id dropdown,
+  // limited to those matching the language currently selected on the date form.
+  const dateLanguage = String(dates.form.language ?? "").trim();
+  const categoryOptions = useMemo(
     () =>
-      tags.rows
+      categories.rows
+        .filter(
+          (row) =>
+            !dateLanguage ||
+            String(row.language ?? "").trim() === dateLanguage,
+        )
         .map((row) => {
           const value = String(row.id ?? "").trim();
           const label = String(row.label ?? row.slug ?? "").trim();
@@ -54,7 +61,7 @@ export function HappySpotsSection({
           };
         })
         .filter((option) => option.value),
-    [tags.rows],
+    [categories.rows, dateLanguage],
   );
 
   return (
@@ -62,11 +69,11 @@ export function HappySpotsSection({
       <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
         <Tabs
           value={subTab}
-          onChange={(_event, value: HappySubTab) => setSubTab(value)}
-          aria-label="Happy spots sub tabs"
+          onChange={(_event, value: HappyDateSubTab) => setSubTab(value)}
+          aria-label="Happy dates sub tabs"
         >
-          <Tab label="Happy spot pages" value="spots" />
-          <Tab label="Happy spot tag pages" value="tags" />
+          <Tab label="Happy date pages" value="dates" />
+          <Tab label="Happy date category pages" value="categories" />
         </Tabs>
       </Box>
 
@@ -100,11 +107,8 @@ export function HappySpotsSection({
         values={active.form}
         validationError={active.error}
         relationSelects={
-          subTab === "spots"
-            ? {
-                main_tag_id: { options: tagOptions, multiple: false },
-                tag_ids: { options: tagOptions, multiple: true },
-              }
+          subTab === "dates"
+            ? { category_id: { options: categoryOptions, multiple: false } }
             : {}
         }
         onFieldChange={active.changeField}
