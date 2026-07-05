@@ -11,9 +11,22 @@ export type BubblesFormationMode =
   | "digit-3"
   | "orbit";
 
+export type BubblesEffect = "confetti" | "fireworks";
+
+export const BUBBLES_EFFECTS: readonly BubblesEffect[] = [
+  "confetti",
+  "fireworks",
+];
+
+export const BUBBLES_EFFECT_LABELS: Record<BubblesEffect, string> = {
+  confetti: "Confetti",
+  fireworks: "Fireworks",
+};
+
 export type BubblesChoreographyStep = {
   mode: BubblesFormationMode;
   durationMs: number;
+  effects?: BubblesEffect[];
 };
 
 export type BubblesChoreography = {
@@ -67,9 +80,18 @@ export function parseBubblesChoreography(
     ) {
       continue;
     }
+    const rawEffects = (step as { effects?: unknown }).effects;
+    const effects = Array.isArray(rawEffects)
+      ? (rawEffects.filter(
+          (e): e is BubblesEffect =>
+            typeof e === "string" &&
+            BUBBLES_EFFECTS.includes(e as BubblesEffect),
+        ) as BubblesEffect[])
+      : [];
     steps.push({
       mode: step.mode as BubblesFormationMode,
       durationMs: step.durationMs,
+      ...(effects.length > 0 && { effects }),
     });
   }
   if (steps.length === 0) {
@@ -82,4 +104,51 @@ export function getChoreographyTotalMs(
   steps: readonly BubblesChoreographyStep[],
 ): number {
   return steps.reduce((total, step) => total + step.durationMs, 0);
+}
+
+// Save-time guardrails so an authored choreography can't misbehave on the wall.
+export const MIN_STEP_SECONDS = 0.5;
+export const MAX_STEP_SECONDS = 120;
+// Confetti/fireworks steps shorter than this barely play (sound + fade need
+// time), so we require a floor on any step that declares an effect.
+export const MIN_EFFECT_STEP_SECONDS = 2;
+export const MAX_STEPS = 20;
+// The wall stops the show after 5 min; non-looping steps past that never play.
+export const MAX_TOTAL_SECONDS = 300;
+
+// Returns a list of human-readable blocking errors (empty === valid to save).
+export function validateChoreography(
+  steps: readonly BubblesChoreographyStep[],
+  loop: boolean,
+): string[] {
+  const errors: string[] = [];
+  if (steps.length === 0) {
+    errors.push("Add at least one step before saving.");
+    return errors;
+  }
+  if (steps.length > MAX_STEPS) {
+    errors.push(`Too many steps — keep it to ${MAX_STEPS} or fewer.`);
+  }
+  steps.forEach((step, index) => {
+    const seconds = step.durationMs / 1000;
+    const n = index + 1;
+    if (seconds < MIN_STEP_SECONDS) {
+      errors.push(`Step ${n}: duration must be at least ${MIN_STEP_SECONDS}s.`);
+    }
+    if (seconds > MAX_STEP_SECONDS) {
+      errors.push(`Step ${n}: duration must be at most ${MAX_STEP_SECONDS}s.`);
+    }
+    if ((step.effects?.length ?? 0) > 0 && seconds < MIN_EFFECT_STEP_SECONDS) {
+      errors.push(
+        `Step ${n}: steps with confetti/fireworks need at least ${MIN_EFFECT_STEP_SECONDS}s to play.`,
+      );
+    }
+  });
+  const totalSeconds = getChoreographyTotalMs(steps) / 1000;
+  if (!loop && totalSeconds > MAX_TOTAL_SECONDS) {
+    errors.push(
+      `Total ${totalSeconds.toFixed(1)}s exceeds the ${MAX_TOTAL_SECONDS}s show limit — later steps won't play. Trim steps or turn Loop on.`,
+    );
+  }
+  return errors;
 }

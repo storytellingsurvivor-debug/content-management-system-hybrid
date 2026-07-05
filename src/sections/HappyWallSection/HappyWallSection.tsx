@@ -5,7 +5,9 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Divider,
+  FormControlLabel,
   IconButton,
   MenuItem,
   Paper,
@@ -21,11 +23,15 @@ import RefreshRounded from "@mui/icons-material/RefreshRounded";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { EnvironmentLabel } from "@/types/connection";
 import {
+  BUBBLES_EFFECT_LABELS,
+  BUBBLES_EFFECTS,
   BUBBLES_FORMATION_LABELS,
   BUBBLES_FORMATION_MODES,
   getChoreographyTotalMs,
   parseBubblesChoreography,
+  validateChoreography,
   type BubblesChoreographyStep,
+  type BubblesEffect,
   type BubblesFormationMode,
 } from "@/lib/bubblesChoreographySchema";
 
@@ -72,10 +78,15 @@ export function HappyWallSection({
   const [loop, setLoop] = useState(true);
   const [draftMode, setDraftMode] = useState<BubblesFormationMode>("heart");
   const [draftSeconds, setDraftSeconds] = useState(DEFAULT_STEP_SECONDS);
+  const [draftEffects, setDraftEffects] = useState<BubblesEffect[]>([]);
 
   const totalSeconds = useMemo(
     () => getChoreographyTotalMs(steps) / 1000,
     [steps],
+  );
+  const validationErrors = useMemo(
+    () => validateChoreography(steps, loop),
+    [steps, loop],
   );
 
   const applyWall = useCallback((row: WallRow | undefined) => {
@@ -129,8 +140,20 @@ export function HappyWallSection({
     if (seconds <= 0) return;
     setSteps((prev) => [
       ...prev,
-      { mode: draftMode, durationMs: Math.round(seconds * 1000) },
+      {
+        mode: draftMode,
+        durationMs: Math.round(seconds * 1000),
+        ...(draftEffects.length > 0 && { effects: [...draftEffects] }),
+      },
     ]);
+  };
+
+  const toggleDraftEffect = (effect: BubblesEffect) => {
+    setDraftEffects((prev) =>
+      prev.includes(effect)
+        ? prev.filter((e) => e !== effect)
+        : [...prev, effect],
+    );
   };
 
   const removeStep = (index: number) => {
@@ -159,6 +182,14 @@ export function HappyWallSection({
     if (!client || !selectedId) return;
     setError(null);
     onFeedback(null);
+    // Empty === clear the wall's choreography; only guard non-empty ones.
+    if (steps.length > 0) {
+      const errors = validateChoreography(steps, loop);
+      if (errors.length > 0) {
+        setError(`Fix before saving: ${errors.join(" ")}`);
+        return;
+      }
+    }
     if (!confirmProd()) {
       onFeedback("Action cancelled: PROD confirmation not accepted.");
       return;
@@ -295,6 +326,25 @@ export function HappyWallSection({
               </Button>
             </Box>
 
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography variant="body2" color="text.secondary">
+                Effects on this step:
+              </Typography>
+              {BUBBLES_EFFECTS.map((effect) => (
+                <FormControlLabel
+                  key={effect}
+                  control={
+                    <Checkbox
+                      size="small"
+                      checked={draftEffects.includes(effect)}
+                      onChange={() => toggleDraftEffect(effect)}
+                    />
+                  }
+                  label={BUBBLES_EFFECT_LABELS[effect]}
+                />
+              ))}
+            </Box>
+
             <Divider />
 
             {steps.length === 0 ? (
@@ -311,6 +361,11 @@ export function HappyWallSection({
                     <Typography variant="body2" sx={{ flex: 1 }}>
                       {index + 1}. {BUBBLES_FORMATION_LABELS[step.mode]} —{" "}
                       {(step.durationMs / 1000).toFixed(1)}s
+                      {step.effects && step.effects.length > 0
+                        ? ` · ${step.effects
+                            .map((e) => BUBBLES_EFFECT_LABELS[e])
+                            .join(" + ")}`
+                        : ""}
                     </Typography>
                     <IconButton
                       size="small"
@@ -353,12 +408,25 @@ export function HappyWallSection({
               </Button>
             </Box>
 
+            {steps.length > 0 && validationErrors.length > 0 && (
+              <Alert severity="warning">
+                <Stack spacing={0.25}>
+                  {validationErrors.map((message) => (
+                    <span key={message}>{message}</span>
+                  ))}
+                </Stack>
+              </Alert>
+            )}
+
             <Box>
               <Button
                 variant="contained"
                 color="success"
                 onClick={save}
-                disabled={submitting}
+                disabled={
+                  submitting ||
+                  (steps.length > 0 && validationErrors.length > 0)
+                }
               >
                 {submitting ? "Saving…" : "Save choreography"}
               </Button>
