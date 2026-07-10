@@ -27,6 +27,7 @@ import {
   BUBBLES_EFFECTS,
   BUBBLES_FORMATION_LABELS,
   BUBBLES_FORMATION_MODES,
+  DEFAULT_ANIMATION_DURATION_SECONDS,
   getChoreographyTotalMs,
   parseBubblesChoreography,
   validateChoreography,
@@ -37,6 +38,14 @@ import {
 
 const HOPE_WALL_TABLE = "hope_wall";
 const DEFAULT_STEP_SECONDS = 4;
+
+// "300s (5 min 0s)" — spells the duration in both seconds and minutes.
+function formatDurationLabel(totalSeconds: number): string {
+  const s = Math.max(0, Math.round(totalSeconds));
+  const min = Math.floor(s / 60);
+  const rem = s % 60;
+  return `${s}s (${min} min ${rem}s)`;
+}
 
 interface HappyWallSectionProps {
   isConnected: boolean;
@@ -50,6 +59,7 @@ type WallRow = {
   slug: string | null;
   title_or_description: string | null;
   bubbles_choreography: unknown;
+  animation_duration: number | null;
 };
 
 function readableError(error: unknown, fallback: string): string {
@@ -79,20 +89,28 @@ export function HappyWallSection({
   const [draftMode, setDraftMode] = useState<BubblesFormationMode>("heart");
   const [draftSeconds, setDraftSeconds] = useState(DEFAULT_STEP_SECONDS);
   const [draftEffects, setDraftEffects] = useState<BubblesEffect[]>([]);
+  const [animationSeconds, setAnimationSeconds] = useState(
+    DEFAULT_ANIMATION_DURATION_SECONDS,
+  );
 
   const totalSeconds = useMemo(
     () => getChoreographyTotalMs(steps) / 1000,
     [steps],
   );
   const validationErrors = useMemo(
-    () => validateChoreography(steps, loop),
-    [steps, loop],
+    () => validateChoreography(steps, loop, animationSeconds),
+    [steps, loop, animationSeconds],
   );
 
   const applyWall = useCallback((row: WallRow | undefined) => {
     const parsed = row ? parseBubblesChoreography(row.bubbles_choreography) : null;
     setSteps(parsed?.steps ?? []);
     setLoop(parsed?.loop ?? true);
+    setAnimationSeconds(
+      row && typeof row.animation_duration === "number" && row.animation_duration > 0
+        ? row.animation_duration / 1000
+        : DEFAULT_ANIMATION_DURATION_SECONDS,
+    );
     setError(null);
   }, []);
 
@@ -102,7 +120,7 @@ export function HappyWallSection({
     setUnavailable(null);
     const { data, error: loadError } = await client
       .from(HOPE_WALL_TABLE)
-      .select("id, slug, title_or_description, bubbles_choreography")
+      .select("id, slug, title_or_description, bubbles_choreography, animation_duration")
       .order("id", { ascending: false })
       .limit(500);
     setLoading(false);
@@ -182,9 +200,13 @@ export function HappyWallSection({
     if (!client || !selectedId) return;
     setError(null);
     onFeedback(null);
+    if (!Number.isFinite(animationSeconds) || animationSeconds <= 0) {
+      setError("Animation duration must be greater than 0 seconds.");
+      return;
+    }
     // Empty === clear the wall's choreography; only guard non-empty ones.
     if (steps.length > 0) {
-      const errors = validateChoreography(steps, loop);
+      const errors = validateChoreography(steps, loop, animationSeconds);
       if (errors.length > 0) {
         setError(`Fix before saving: ${errors.join(" ")}`);
         return;
@@ -198,12 +220,13 @@ export function HappyWallSection({
     try {
       const payload = {
         bubbles_choreography: steps.length > 0 ? { steps, loop } : null,
+        animation_duration: Math.round(animationSeconds * 1000),
       };
       const { data, error: updateError } = await client
         .from(HOPE_WALL_TABLE)
         .update(payload)
         .eq("id", Number(selectedId))
-        .select("id, slug, title_or_description, bubbles_choreography");
+        .select("id, slug, title_or_description, bubbles_choreography, animation_duration");
       if (updateError) throw updateError;
       if (!data || data.length === 0) {
         throw new Error(
@@ -295,6 +318,29 @@ export function HappyWallSection({
 
         {selectedId ? (
           <>
+            <Divider />
+
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+              <TextField
+                size="small"
+                type="number"
+                label="Animation duration (seconds)"
+                value={animationSeconds}
+                onChange={(e) => setAnimationSeconds(Number(e.target.value))}
+                slotProps={{ htmlInput: { min: 1, step: 1 } }}
+                sx={{ width: 200 }}
+              />
+              <Typography variant="body2" color="text.secondary">
+                = {formatDurationLabel(animationSeconds)} ·{" "}
+                {Math.round(animationSeconds * 1000)} ms saved
+              </Typography>
+            </Box>
+
+            <Typography variant="caption" color="text.secondary">
+              How long the whole show (music card + bubbles + effects) stays on
+              before it stops. Non-looping choreography longer than this gets cut.
+            </Typography>
+
             <Divider />
 
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>

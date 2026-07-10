@@ -113,13 +113,17 @@ export const MAX_STEP_SECONDS = 120;
 // time), so we require a floor on any step that declares an effect.
 export const MIN_EFFECT_STEP_SECONDS = 2;
 export const MAX_STEPS = 20;
-// The wall stops the show after 5 min; non-looping steps past that never play.
-export const MAX_TOTAL_SECONDS = 300;
+// Default show length (ms) when a wall has no animation_duration set. Matches the
+// wall app's hope_wall.animation_duration default (join-milo).
+export const DEFAULT_ANIMATION_DURATION_SECONDS = 300;
 
 // Returns a list of human-readable blocking errors (empty === valid to save).
+// maxTotalSeconds is the wall's animation_duration: the show stops after it, so
+// non-looping steps past that never play.
 export function validateChoreography(
   steps: readonly BubblesChoreographyStep[],
   loop: boolean,
+  maxTotalSeconds: number = DEFAULT_ANIMATION_DURATION_SECONDS,
 ): string[] {
   const errors: string[] = [];
   if (steps.length === 0) {
@@ -145,9 +149,9 @@ export function validateChoreography(
     }
   });
   const totalSeconds = getChoreographyTotalMs(steps) / 1000;
-  if (!loop && totalSeconds > MAX_TOTAL_SECONDS) {
+  if (!loop && totalSeconds > maxTotalSeconds) {
     errors.push(
-      `Total ${totalSeconds.toFixed(1)}s exceeds the ${MAX_TOTAL_SECONDS}s show limit — later steps won't play. Trim steps or turn Loop on.`,
+      `Total ${totalSeconds.toFixed(1)}s exceeds the wall's ${maxTotalSeconds}s animation duration — later steps won't play. Raise the animation duration, trim steps, or turn Loop on.`,
     );
   }
   return errors;
