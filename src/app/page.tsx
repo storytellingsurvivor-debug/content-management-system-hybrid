@@ -88,6 +88,36 @@ function createEmptyTemplateForm(columns: BlogColumnDefinition[]): BlogRow {
   return base;
 }
 
+// PostgREST caps each response (default max-rows = 1000), so a single
+// `.limit(N)` silently drops older rows. We page through the whole table with
+// `.range()` until a short page signals the end, guaranteeing every article —
+// including the oldest ones — is loaded.
+const ROWS_PER_PAGE = 1000;
+
+async function fetchAllRows(
+  client: SupabaseClient,
+  table: string,
+): Promise<BlogRow[]> {
+  const allRows: BlogRow[] = [];
+
+  for (let from = 0; ; from += ROWS_PER_PAGE) {
+    const to = from + ROWS_PER_PAGE - 1;
+    const { data, error } = await client
+      .from(table)
+      .select("*")
+      .order("id", { ascending: false })
+      .range(from, to);
+    if (error) throw error;
+
+    const batch = (data ?? []) as BlogRow[];
+    allRows.push(...batch);
+
+    if (batch.length < ROWS_PER_PAGE) break;
+  }
+
+  return allRows;
+}
+
 function getRowSelectionValue(row: BlogRow): string {
   const id = String(row.id ?? "").trim();
   if (id) return `id:${id}`;
@@ -268,17 +298,14 @@ export default function Home() {
   const loadArticlesAndSchema = async (client: SupabaseClient) => {
     setIsArticlesLoading(true);
 
-    const { data, error } = await client
-      .from("blog")
-      .select("*")
-      .order("id", { ascending: false })
-      .limit(100);
-    if (error) {
+    let rows: BlogRow[];
+    try {
+      rows = await fetchAllRows(client, "blog");
+    } catch (error) {
       setIsArticlesLoading(false);
       throw error;
     }
 
-    const rows = (data ?? []) as BlogRow[];
     setArticles(rows);
 
     const nextColumns = inferColumnsFromRow(rows[0] ?? null);
