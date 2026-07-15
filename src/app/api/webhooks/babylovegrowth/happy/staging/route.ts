@@ -31,7 +31,6 @@ export async function POST(request: Request): Promise<Response> {
     author_image_url:
       "https://sffejjhgtqzrdhudminu.supabase.co/storage/v1/object/public/milo-channel/happy-milo/email/happy-milo-avatar-linkedin-signature.webp",
     category: "Actualités",
-    brand: "happy",
     read_time_in_minutes: 5,
     is_live: false,
   };

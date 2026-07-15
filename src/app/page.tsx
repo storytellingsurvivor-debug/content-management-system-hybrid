@@ -19,6 +19,11 @@ import {
   validateBlogPayload,
 } from "@/lib/blogFormSchema";
 import {
+  BRAND_PRESETS,
+  detectWorkspaceFeatures,
+  type WorkspaceFeatures,
+} from "@/lib/brands";
+import {
   DEFAULT_TEMPLATE_COLUMNS,
   findDuplicateTemplate,
   inferTemplateColumns,
@@ -50,8 +55,9 @@ const TEMPLATE_DEFAULTS: Record<string, unknown> = {
 };
 
 const INITIAL_CONNECTION_VALUES: ConnectionFormValues = {
+  brand: "happy",
   environment: "STAGING",
-  supabaseUrl: "",
+  supabaseUrl: BRAND_PRESETS[0].url,
   supabaseAnonKey: "",
 };
 
@@ -208,8 +214,19 @@ export default function Home() {
   const [templatesUnavailable, setTemplatesUnavailable] = useState<
     string | null
   >(null);
+  const [features, setFeatures] = useState<WorkspaceFeatures | null>(null);
 
+  const templateTable = features?.templateTable ?? TEMPLATE_TABLE;
   const isConnected = connectionView.status === "connected";
+  // If the current tab's table doesn't exist on the connected DB, fall back to blog.
+  const tabAvailable: Record<WorkspaceTab, boolean> = {
+    blog: true,
+    templates: Boolean(features?.templateTable),
+    happy: Boolean(features?.hasSpots),
+    happyDates: Boolean(features?.hasDates),
+    happyWall: Boolean(features?.wallTable),
+  };
+  const safeTab: WorkspaceTab = tabAvailable[activeTab] ? activeTab : "blog";
   const hasAutoConnectedRef = useRef(false);
   const prefillRef = useRef<Record<string, unknown> | null>(null);
   const handleConnectRef = useRef<
@@ -248,11 +265,14 @@ export default function Home() {
     setTemplatesUnavailable(null);
   };
 
-  const loadTemplatesAndSchema = async (client: SupabaseClient) => {
+  const loadTemplatesAndSchema = async (
+    client: SupabaseClient,
+    table: string,
+  ) => {
     setIsTemplatesLoading(true);
 
     const { data, error } = await client
-      .from(TEMPLATE_TABLE)
+      .from(table)
       .select("*")
       .order("id", { ascending: false })
       .limit(200);
@@ -371,20 +391,28 @@ export default function Home() {
       if (error) throw error;
 
       setSupabaseClient(client);
+      setConnectionMeta("detecting-tables");
+      // Only tabs whose table exists in this DB get shown.
+      const detected = await detectWorkspaceFeatures(client);
+      setFeatures(detected);
+
       setConnectionMeta("loading-articles");
       await Promise.all([
         loadArticlesAndSchema(client),
-        loadTemplatesAndSchema(client),
+        detected.templateTable
+          ? loadTemplatesAndSchema(client, detected.templateTable)
+          : Promise.resolve(),
       ]);
       setConnectionView({
         status: "connected",
         errorMessage: null,
       });
-      setFeedbackMessage("Connected and loaded blog + template data.");
+      setFeedbackMessage("Connected and loaded workspace data.");
       setConnectionMeta("connected");
     } catch (error) {
       const message = getReadableError(error);
       setSupabaseClient(null);
+      setFeatures(null);
       resetEditorState(DEFAULT_BLOG_COLUMNS);
       resetTemplateState(DEFAULT_TEMPLATE_COLUMNS);
       setIsArticlesLoading(false);
@@ -401,9 +429,9 @@ export default function Home() {
 
   const handleDisconnect = () => {
     setSupabaseClient(null);
+    setFeatures(null);
     setConnectionValues((previous) => ({
       ...previous,
-      supabaseUrl: "",
       supabaseAnonKey: "",
     }));
     setConnectionView(INITIAL_CONNECTION_VIEW);
@@ -602,7 +630,7 @@ export default function Home() {
     setFeedbackMessage(null);
     setTemplateValidationError(null);
     try {
-      await loadTemplatesAndSchema(supabaseClient);
+      await loadTemplatesAndSchema(supabaseClient, templateTable);
       setFeedbackMessage("Templates and detected fields refreshed.");
     } catch (error) {
       const message = getReadableError(
@@ -676,7 +704,7 @@ export default function Home() {
     setTemplateValidationError(null);
     setFeedbackMessage(null);
 
-    if (!requireProdConfirmationFor(action, TEMPLATE_TABLE)) {
+    if (!requireProdConfirmationFor(action, templateTable)) {
       setFeedbackMessage("Action cancelled: PROD confirmation not accepted.");
       return;
     }
@@ -696,8 +724,10 @@ export default function Home() {
         action === "update" ? templateFormValues.id : undefined,
       );
       if (duplicate) {
+        const brandPart =
+          "brand" in payload ? `brand="${payload.brand}", ` : "";
         setTemplateValidationError(
-          `A template already exists with brand="${payload.brand}", slug="${payload.slug}", language="${payload.language}" (#${duplicate.id}).`,
+          `A template already exists with ${brandPart}slug="${payload.slug}", language="${payload.language}" (#${duplicate.id}).`,
         );
         return;
       }
@@ -707,7 +737,7 @@ export default function Home() {
     try {
       if (action === "create") {
         const { data, error } = await supabaseClient
-          .from(TEMPLATE_TABLE)
+          .from(templateTable)
           .insert(payload)
           .select("*")
           .single();
@@ -729,13 +759,13 @@ export default function Home() {
           );
         }
         const { error, count } = await supabaseClient
-          .from(TEMPLATE_TABLE)
+          .from(templateTable)
           .update(payload, { count: "exact" })
           .eq(filter.field, filter.value);
         if (error) throw error;
         if (count === 0) {
           throw new Error(
-            `Update affected 0 rows. The row matching ${filter.field}="${filter.value}" is either gone or the connected key is not allowed to update it (likely RLS: no UPDATE policy for the anon role on ${TEMPLATE_TABLE}).`,
+            `Update affected 0 rows. The row matching ${filter.field}="${filter.value}" is either gone or the connected key is not allowed to update it (likely RLS: no UPDATE policy for the anon role on ${templateTable}).`,
           );
         }
 
@@ -750,7 +780,7 @@ export default function Home() {
           );
         }
         const { error } = await supabaseClient
-          .from(TEMPLATE_TABLE)
+          .from(templateTable)
           .delete()
           .eq(filter.field, filter.value);
         if (error) throw error;
@@ -761,7 +791,7 @@ export default function Home() {
         setTemplateFormValues(createEmptyTemplateForm(templateColumns));
       }
 
-      await loadTemplatesAndSchema(supabaseClient);
+      await loadTemplatesAndSchema(supabaseClient, templateTable);
     } catch (error) {
       const message = getReadableError(
         error,
@@ -820,10 +850,11 @@ export default function Home() {
     <Container maxWidth="xl" sx={{ py: 4 }}>
       <Box sx={{ mb: 3 }}>
         <Typography variant="h4" sx={{ mb: 0.5 }}>
-          Supabase Blogs CMS
+          Milo CMS
         </Typography>
         <Typography color="text.secondary">
-          Local admin workspace with schema-driven editor and markdown preview.
+          One workspace per brand — pick a brand, connect, and only the
+          content types that exist in that database show up.
         </Typography>
         <Typography color="text.secondary" variant="body2" sx={{ mt: 0.75 }}>
           Connection status: {connectionView.status} ({connectionMeta})
@@ -852,19 +883,23 @@ export default function Home() {
 
       <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
         <Tabs
-          value={activeTab}
+          value={safeTab}
           onChange={(_event, value: WorkspaceTab) => setActiveTab(value)}
           aria-label="Workspace tabs"
         >
           <Tab label="Blog articles" value="blog" />
-          <Tab label="Hope Wall templates" value="templates" />
-          <Tab label="Happy Spots" value="happy" />
-          <Tab label="Happy Dates" value="happyDates" />
-          <Tab label="Happy Wall" value="happyWall" />
+          {features?.templateTable && (
+            <Tab label="Happy Wall templates" value="templates" />
+          )}
+          {features?.hasSpots && <Tab label="Happy Spots" value="happy" />}
+          {features?.hasDates && (
+            <Tab label="Happy Dates" value="happyDates" />
+          )}
+          {features?.wallTable && <Tab label="Happy Wall" value="happyWall" />}
         </Tabs>
       </Box>
 
-      {activeTab === "blog" && (
+      {safeTab === "blog" && (
         <>
           <ArticlesSection
             isConnected={isConnected}
@@ -890,11 +925,11 @@ export default function Home() {
         </>
       )}
 
-      {activeTab === "templates" && (
+      {safeTab === "templates" && (
         <>
           {templatesUnavailable && (
             <Alert severity="warning" sx={{ mb: 2 }}>
-              Could not load `{TEMPLATE_TABLE}`: {templatesUnavailable}
+              Could not load `{templateTable}`: {templatesUnavailable}
             </Alert>
           )}
 
@@ -907,6 +942,7 @@ export default function Home() {
             onSelectTemplate={handleSelectTemplate}
             onCreateNew={handleCreateNewTemplate}
             onRefresh={handleRefreshTemplates}
+            tableName={templateTable}
           />
 
           <TemplateEditorSection
@@ -922,7 +958,7 @@ export default function Home() {
         </>
       )}
 
-      {activeTab === "happy" && (
+      {safeTab === "happy" && (
         <HappySpotsSection
           isConnected={isConnected}
           client={supabaseClient}
@@ -931,7 +967,7 @@ export default function Home() {
         />
       )}
 
-      {activeTab === "happyDates" && (
+      {safeTab === "happyDates" && (
         <HappyDatesSection
           isConnected={isConnected}
           client={supabaseClient}
@@ -940,12 +976,13 @@ export default function Home() {
         />
       )}
 
-      {activeTab === "happyWall" && (
+      {safeTab === "happyWall" && features?.wallTable && (
         <HappyWallSection
           isConnected={isConnected}
           client={supabaseClient}
           environment={connectionValues.environment}
           onFeedback={setFeedbackMessage}
+          table={features.wallTable}
         />
       )}
 

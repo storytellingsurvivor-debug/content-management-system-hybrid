@@ -6,7 +6,9 @@ const REQUIRED_COLUMNS = new Set(["slug", "language", "brand"]);
 export const TEMPLATE_LANGUAGE_OPTIONS = ["en", "fr"] as const;
 export type TemplateLanguage = (typeof TEMPLATE_LANGUAGE_OPTIONS)[number];
 
-export const TEMPLATE_TABLE = "hope_wall_audience_template";
+// Fallback when the table probe hasn't resolved yet; Happy-Milo uses
+// happy_wall_audience_template, older DBs hope_wall_audience_template.
+export const TEMPLATE_TABLE = "happy_wall_audience_template";
 
 const LONG_TEXT_FIELDS = new Set([
   "hero_description",
@@ -161,14 +163,13 @@ export function inferTemplateColumns(
 ): BlogColumnDefinition[] {
   if (!row) return DEFAULT_TEMPLATE_COLUMNS;
 
-  const defaultByName = new Map(
-    DEFAULT_TEMPLATE_COLUMNS.map((column) => [column.name, column]),
-  );
-
   const ordered: BlogColumnDefinition[] = [];
   const seen = new Set<string>();
 
+  // Known columns first (default order), but only those the table really has —
+  // e.g. Happy-Milo dropped the brand column entirely.
   for (const column of DEFAULT_TEMPLATE_COLUMNS) {
+    if (!(column.name in row)) continue;
     ordered.push(column);
     seen.add(column.name);
   }
@@ -186,7 +187,7 @@ export function inferTemplateColumns(
     seen.add(name);
   }
 
-  return ordered.map((column) => defaultByName.get(column.name) ?? column);
+  return ordered;
 }
 
 export function validateTemplatePayload(
@@ -194,7 +195,6 @@ export function validateTemplatePayload(
 ): string | null {
   const slug = String(payload.slug ?? "").trim();
   const language = String(payload.language ?? "").trim();
-  const brand = String(payload.brand ?? "").trim();
 
   if (!slug) return "Slug is required.";
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
@@ -204,7 +204,10 @@ export function validateTemplatePayload(
   if (!TEMPLATE_LANGUAGE_OPTIONS.includes(language as TemplateLanguage)) {
     return `Language must be one of: ${TEMPLATE_LANGUAGE_OPTIONS.join(", ")}.`;
   }
-  if (!brand) return "Brand is required.";
+  // brand only exists on multi-brand DBs; require it only when the column is there.
+  if ("brand" in payload && !String(payload.brand ?? "").trim()) {
+    return "Brand is required.";
+  }
 
   const url = payload.uploaded_image_url;
   if (typeof url === "string" && url.trim().length > 0) {
@@ -226,7 +229,7 @@ export function findDuplicateTemplate(
   const brand = String(payload.brand ?? "").trim();
   const slug = String(payload.slug ?? "").trim();
   const language = String(payload.language ?? "").trim();
-  if (!brand || !slug || !language) return null;
+  if (!slug || !language) return null;
 
   const excludeKey = excludeId === undefined ? "" : String(excludeId);
 
@@ -234,8 +237,9 @@ export function findDuplicateTemplate(
     rows.find((row) => {
       const rowId = String(row.id ?? "");
       if (excludeKey && rowId === excludeKey) return false;
+      // brand is only discriminating on multi-brand DBs.
+      if (brand && String(row.brand ?? "").trim() !== brand) return false;
       return (
-        String(row.brand ?? "").trim() === brand &&
         String(row.slug ?? "").trim() === slug &&
         String(row.language ?? "").trim() === language
       );

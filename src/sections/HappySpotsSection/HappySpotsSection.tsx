@@ -79,7 +79,6 @@ export function HappySpotsSection({
       <TemplatesSection
         title={`Browse ${config.label}`}
         tableName={config.table}
-        showBrandFilter={false}
         isConnected={isConnected}
         isLoading={active.loading}
         templates={active.rows}

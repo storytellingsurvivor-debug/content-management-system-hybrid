@@ -11,7 +11,6 @@ export interface FieldGroup {
 const SPOT_COLUMNS: BlogColumnDefinition[] = [
   { name: "id", label: "Id", uiType: "text", required: false, readOnly: true },
   { name: "created_at", label: "Created Date", uiType: "datetime", required: false, readOnly: true },
-  { name: "brand", label: "Brand", uiType: "text", required: true, readOnly: false },
   { name: "slug", label: "Slug", uiType: "text", required: true, readOnly: false },
   { name: "language", label: "Language", uiType: "text", required: true, readOnly: false },
   { name: "name", label: "Name", uiType: "text", required: true, readOnly: false },
@@ -39,7 +38,6 @@ const SPOT_COLUMNS: BlogColumnDefinition[] = [
 const TAG_COLUMNS: BlogColumnDefinition[] = [
   { name: "id", label: "Id", uiType: "text", required: false, readOnly: true },
   { name: "created_at", label: "Created Date", uiType: "datetime", required: false, readOnly: true },
-  { name: "brand", label: "Brand", uiType: "text", required: true, readOnly: false },
   { name: "slug", label: "Slug", uiType: "text", required: true, readOnly: false },
   { name: "language", label: "Language", uiType: "text", required: true, readOnly: false },
   { name: "type", label: "Type", uiType: "text", required: true, readOnly: false },
@@ -64,7 +62,7 @@ const TAG_COLUMNS: BlogColumnDefinition[] = [
 ];
 
 const SPOT_GROUPS: FieldGroup[] = [
-  { title: "Identity", fields: ["id", "created_at", "brand", "slug", "language", "name", "is_active"] },
+  { title: "Identity", fields: ["id", "created_at", "slug", "language", "name", "is_active"] },
   { title: "Location", fields: ["address", "city", "lat", "lng"] },
   { title: "Tags", fields: ["main_tag_id", "tag_ids"] },
   { title: "Content", fields: ["image_url", "note", "author", "author_image", "views", "markdown_content", "structured_data"] },
@@ -72,7 +70,7 @@ const SPOT_GROUPS: FieldGroup[] = [
 ];
 
 const TAG_GROUPS: FieldGroup[] = [
-  { title: "Identity", fields: ["id", "created_at", "brand", "slug", "language", "type", "label"] },
+  { title: "Identity", fields: ["id", "created_at", "slug", "language", "type", "label"] },
   { title: "Flags", fields: ["is_main", "is_active", "can_add_spot"] },
   { title: "Appearance", fields: ["color", "emoji", "image_url", "title", "description"] },
   { title: "Map", fields: ["position", "max_zoom", "center_lat", "center_lng"] },

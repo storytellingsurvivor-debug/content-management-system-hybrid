@@ -33,7 +33,6 @@ interface TemplatesSectionProps {
   onRefresh: () => void | Promise<void>;
   title?: string;
   tableName?: string;
-  showBrandFilter?: boolean;
 }
 
 function templateOptionValue(row: BlogRow): string {
@@ -53,6 +52,15 @@ function pickField(row: BlogRow, ...keys: string[]): string {
   return "";
 }
 
+// "live" / "off" from is_live or is_active, "" when the row has neither flag.
+function rowStatus(row: BlogRow): "live" | "off" | "" {
+  for (const key of ["is_live", "is_active"]) {
+    const value = row[key];
+    if (typeof value === "boolean") return value ? "live" : "off";
+  }
+  return "";
+}
+
 export function TemplatesSection({
   isConnected,
   isLoading,
@@ -64,20 +72,14 @@ export function TemplatesSection({
   onRefresh,
   title = "2. Templates",
   tableName = TEMPLATE_TABLE,
-  showBrandFilter = true,
 }: TemplatesSectionProps) {
-  const [brandFilter, setBrandFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("");
   const [languageFilter, setLanguageFilter] = useState<string>("");
 
-  const distinctBrands = useMemo(() => {
-    return Array.from(
-      new Set(
-        templates
-          .map((template) => pickField(template, "brand"))
-          .filter((value) => value.length > 0),
-      ),
-    ).sort((a, b) => a.localeCompare(b));
-  }, [templates]);
+  const hasStatusFlag = useMemo(
+    () => templates.some((template) => rowStatus(template) !== ""),
+    [templates],
+  );
 
   const distinctLanguages = useMemo(() => {
     return Array.from(
@@ -91,7 +93,7 @@ export function TemplatesSection({
 
   const visibleTemplates = useMemo(() => {
     return templates.filter((template) => {
-      if (brandFilter && pickField(template, "brand") !== brandFilter) {
+      if (statusFilter && rowStatus(template) !== statusFilter) {
         return false;
       }
       if (
@@ -102,7 +104,7 @@ export function TemplatesSection({
       }
       return true;
     });
-  }, [templates, brandFilter, languageFilter]);
+  }, [templates, statusFilter, languageFilter]);
 
   return (
     <Paper elevation={2} sx={sectionPaperSx}>
@@ -119,26 +121,23 @@ export function TemplatesSection({
           <Box
             sx={{
               ...(controlsGridSx as object),
-              ...(showBrandFilter
+              ...(hasStatusFlag
                 ? {}
                 : { gridTemplateColumns: { xs: "1fr", md: "1fr auto auto" } }),
             }}
           >
-            {showBrandFilter && (
+            {hasStatusFlag && (
               <TextField
                 select
-                label="Filter by brand"
-                value={brandFilter}
-                onChange={(event) => setBrandFilter(event.target.value)}
-                disabled={isLoading || distinctBrands.length === 0}
+                label="Filter by status"
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+                disabled={isLoading}
                 fullWidth
               >
-                <MenuItem value="">All brands</MenuItem>
-                {distinctBrands.map((brand) => (
-                  <MenuItem key={brand} value={brand}>
-                    {brand}
-                  </MenuItem>
-                ))}
+                <MenuItem value="">All statuses</MenuItem>
+                <MenuItem value="live">Live / Active</MenuItem>
+                <MenuItem value="off">Inactive</MenuItem>
               </TextField>
             )}
 

@@ -36,7 +36,6 @@ import {
   type BubblesFormationMode,
 } from "@/lib/bubblesChoreographySchema";
 
-const HOPE_WALL_TABLE = "hope_wall";
 const DEFAULT_STEP_SECONDS = 4;
 
 // "300s (5 min 0s)" — spells the duration in both seconds and minutes.
@@ -52,6 +51,8 @@ interface HappyWallSectionProps {
   client: SupabaseClient | null;
   environment: EnvironmentLabel;
   onFeedback: (message: string | null) => void;
+  // "happy_wall" on Happy-Milo, "hope_wall" on older DBs (resolved at connect).
+  table: string;
 }
 
 type WallRow = {
@@ -76,6 +77,7 @@ export function HappyWallSection({
   client,
   environment,
   onFeedback,
+  table,
 }: HappyWallSectionProps) {
   const [rows, setRows] = useState<WallRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -119,7 +121,7 @@ export function HappyWallSection({
     setLoading(true);
     setUnavailable(null);
     const { data, error: loadError } = await client
-      .from(HOPE_WALL_TABLE)
+      .from(table)
       .select("id, slug, title_or_description, bubbles_choreography, animation_duration")
       .order("id", { ascending: false })
       .limit(500);
@@ -139,7 +141,7 @@ export function HappyWallSection({
     } else {
       applyWall(stillThere);
     }
-  }, [client, selectedId, applyWall]);
+  }, [client, table, selectedId, applyWall]);
 
   useEffect(() => {
     if (!isConnected || !client) return;
@@ -191,7 +193,7 @@ export function HappyWallSection({
   const confirmProd = (): boolean => {
     if (environment !== "PROD") return true;
     const answer = window.prompt(
-      `PROD action: type PROD to confirm UPDATE on ${HOPE_WALL_TABLE}.`,
+      `PROD action: type PROD to confirm UPDATE on ${table}.`,
     );
     return answer === "PROD";
   };
@@ -223,14 +225,14 @@ export function HappyWallSection({
         animation_duration: Math.round(animationSeconds * 1000),
       };
       const { data, error: updateError } = await client
-        .from(HOPE_WALL_TABLE)
+        .from(table)
         .update(payload)
         .eq("id", Number(selectedId))
         .select("id, slug, title_or_description, bubbles_choreography, animation_duration");
       if (updateError) throw updateError;
       if (!data || data.length === 0) {
         throw new Error(
-          `Update affected 0 rows. Either the wall #${selectedId} is gone, or the anon key can't UPDATE ${HOPE_WALL_TABLE} (missing RLS UPDATE policy for the anon role on ${HOPE_WALL_TABLE} in this environment).`,
+          `Update affected 0 rows. Either the wall #${selectedId} is gone, or the anon key can't UPDATE ${table} (missing RLS UPDATE policy for the anon role on ${table} in this environment).`,
         );
       }
       onFeedback("Bubble choreography saved successfully.");
@@ -288,7 +290,7 @@ export function HappyWallSection({
 
       {unavailable && (
         <Alert severity="warning" sx={{ mb: 2 }}>
-          Could not load `{HOPE_WALL_TABLE}`: {unavailable}
+          Could not load `{table}`: {unavailable}
         </Alert>
       )}
       {error && (

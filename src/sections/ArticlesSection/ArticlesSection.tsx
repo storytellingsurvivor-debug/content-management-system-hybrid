@@ -49,6 +49,15 @@ function pickField(row: BlogRow, ...keys: string[]): string {
   return "";
 }
 
+// "live" / "off" from is_live or is_active, "" when the row has neither flag.
+function rowStatus(row: BlogRow): "live" | "off" | "" {
+  for (const key of ["is_live", "is_active"]) {
+    const value = row[key];
+    if (typeof value === "boolean") return value ? "live" : "off";
+  }
+  return "";
+}
+
 export function ArticlesSection({
   isConnected,
   isLoading,
@@ -59,18 +68,13 @@ export function ArticlesSection({
   onCreateNew,
   onRefresh,
 }: ArticlesSectionProps) {
-  const [brandFilter, setBrandFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("");
   const [languageFilter, setLanguageFilter] = useState<string>("");
 
-  const distinctBrands = useMemo(() => {
-    return Array.from(
-      new Set(
-        articles
-          .map((article) => pickField(article, "brand"))
-          .filter((value) => value.length > 0),
-      ),
-    ).sort((a, b) => a.localeCompare(b));
-  }, [articles]);
+  const hasStatusFlag = useMemo(
+    () => articles.some((article) => rowStatus(article) !== ""),
+    [articles],
+  );
 
   const distinctLanguages = useMemo(() => {
     return Array.from(
@@ -84,10 +88,7 @@ export function ArticlesSection({
 
   const visibleArticles = useMemo(() => {
     return articles.filter((article) => {
-      if (
-        brandFilter &&
-        pickField(article, "brand") !== brandFilter
-      ) {
+      if (statusFilter && rowStatus(article) !== statusFilter) {
         return false;
       }
       if (
@@ -98,7 +99,7 @@ export function ArticlesSection({
       }
       return true;
     });
-  }, [articles, brandFilter, languageFilter]);
+  }, [articles, statusFilter, languageFilter]);
 
   return (
     <Paper elevation={2} sx={sectionPaperSx}>
@@ -115,18 +116,15 @@ export function ArticlesSection({
           <Box sx={controlsGridSx}>
             <TextField
               select
-              label="Filter by brand"
-              value={brandFilter}
-              onChange={(event) => setBrandFilter(event.target.value)}
-              disabled={isLoading || distinctBrands.length === 0}
+              label="Filter by status"
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+              disabled={isLoading || !hasStatusFlag}
               fullWidth
             >
-              <MenuItem value="">All brands</MenuItem>
-              {distinctBrands.map((brand) => (
-                <MenuItem key={brand} value={brand}>
-                  {brand}
-                </MenuItem>
-              ))}
+              <MenuItem value="">All statuses</MenuItem>
+              <MenuItem value="live">Live / Active</MenuItem>
+              <MenuItem value="off">Inactive</MenuItem>
             </TextField>
 
             <TextField

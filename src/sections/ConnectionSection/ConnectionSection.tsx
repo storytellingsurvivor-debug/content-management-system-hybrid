@@ -9,8 +9,11 @@ import {
   Paper,
   Stack,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from "@mui/material";
+import { BRAND_PRESETS, type BrandKey } from "@/lib/brands";
 import type {
   ConnectionFormValues,
   ConnectionViewState,
@@ -48,24 +51,65 @@ export function ConnectionSection({
   const isBusy = viewState.status === "connecting";
   const submitConnection = () => {
     onConnect({
+      brand: values.brand,
       environment: values.environment,
       supabaseUrl: values.supabaseUrl,
       supabaseAnonKey: values.supabaseAnonKey,
     });
   };
 
+  const selectBrand = (brand: BrandKey) => {
+    const preset = BRAND_PRESETS.find((entry) => entry.key === brand);
+    onChange("brand", brand);
+    // Prefill the project URL (still editable); "Autre" starts blank.
+    onChange("supabaseUrl", preset?.url ?? "");
+  };
+
   return (
     <Paper elevation={2} sx={sectionPaperSx}>
       <Box sx={sectionHeaderRowSx}>
         <Typography variant="h6">1. Environment Connection</Typography>
-        <Chip
-          label={values.environment}
-          color={ENV_COLORS[values.environment]}
-          variant="filled"
-        />
+        <Box sx={{ display: "flex", gap: 1 }}>
+          <Chip
+            label={
+              BRAND_PRESETS.find((preset) => preset.key === values.brand)
+                ?.label ?? values.brand
+            }
+            color="primary"
+            variant="outlined"
+          />
+          <Chip
+            label={values.environment}
+            color={ENV_COLORS[values.environment]}
+            variant="filled"
+          />
+        </Box>
       </Box>
 
       <Box>
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            Choose the brand to manage — the Supabase URL is prefilled and
+            stays editable.
+          </Typography>
+          <ToggleButtonGroup
+            exclusive
+            color="primary"
+            value={values.brand}
+            onChange={(_event, brand: BrandKey | null) => {
+              if (brand) selectBrand(brand);
+            }}
+            size="small"
+            sx={{ flexWrap: "wrap" }}
+          >
+            {BRAND_PRESETS.map((preset) => (
+              <ToggleButton key={preset.key} value={preset.key}>
+                {preset.label}
+              </ToggleButton>
+            ))}
+          </ToggleButtonGroup>
+        </Box>
+
         <Box sx={connectionGridSx}>
           <TextField
             select

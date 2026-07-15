@@ -7,7 +7,6 @@ export const HAPPY_DATE_CATEGORY_TABLE = "happy_date_category";
 const DATE_COLUMNS: BlogColumnDefinition[] = [
   { name: "id", label: "Id", uiType: "text", required: false, readOnly: true },
   { name: "created_at", label: "Created Date", uiType: "datetime", required: false, readOnly: false },
-  { name: "brand", label: "Brand", uiType: "text", required: true, readOnly: false },
   { name: "slug", label: "Slug", uiType: "text", required: true, readOnly: false },
   { name: "language", label: "Language", uiType: "text", required: true, readOnly: false },
   { name: "name", label: "Name", uiType: "text", required: true, readOnly: false },
@@ -34,7 +33,6 @@ const DATE_COLUMNS: BlogColumnDefinition[] = [
 const CATEGORY_COLUMNS: BlogColumnDefinition[] = [
   { name: "id", label: "Id", uiType: "text", required: false, readOnly: true },
   { name: "created_at", label: "Created Date", uiType: "datetime", required: false, readOnly: false },
-  { name: "brand", label: "Brand", uiType: "text", required: true, readOnly: false },
   { name: "slug", label: "Slug", uiType: "text", required: true, readOnly: false },
   { name: "language", label: "Language", uiType: "text", required: true, readOnly: false },
   { name: "label", label: "Label", uiType: "text", required: true, readOnly: false },
@@ -52,7 +50,7 @@ const CATEGORY_COLUMNS: BlogColumnDefinition[] = [
 ];
 
 const DATE_GROUPS: FieldGroup[] = [
-  { title: "Identity", fields: ["id", "created_at", "brand", "slug", "language", "name", "kind", "is_active"] },
+  { title: "Identity", fields: ["id", "created_at", "slug", "language", "name", "kind", "is_active"] },
   { title: "Category", fields: ["category_id"] },
   { title: "Event", fields: ["event_month", "event_day", "event_rule"] },
   { title: "Appearance", fields: ["emoji", "color", "title", "intro"] },
@@ -61,7 +59,7 @@ const DATE_GROUPS: FieldGroup[] = [
 ];
 
 const CATEGORY_GROUPS: FieldGroup[] = [
-  { title: "Identity", fields: ["id", "created_at", "brand", "slug", "language", "label", "is_active"] },
+  { title: "Identity", fields: ["id", "created_at", "slug", "language", "label", "is_active"] },
   { title: "Appearance", fields: ["emoji", "color", "title", "description", "position"] },
   { title: "Metadata", fields: ["metadata_title", "metadata_description", "metadata_keywords", "markdown_content", "article_blog_slugs"] },
 ];
