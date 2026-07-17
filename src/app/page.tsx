@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Box, Container, Tab, Tabs, Typography } from "@mui/material";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { AnalyticsSection } from "@/sections/AnalyticsSection/AnalyticsSection";
 import { ArticlesSection } from "@/sections/ArticlesSection/ArticlesSection";
 import { BucketSection } from "@/sections/BucketSection/BucketSection";
 import { ConnectionSection } from "@/sections/ConnectionSection/ConnectionSection";
@@ -43,6 +44,7 @@ import type {
 
 type WorkspaceTab =
   | "blog"
+  | "analytics"
   | "templates"
   | "happy"
   | "happyDates"
@@ -221,6 +223,7 @@ export default function Home() {
   // If the current tab's table doesn't exist on the connected DB, fall back to blog.
   const tabAvailable: Record<WorkspaceTab, boolean> = {
     blog: true,
+    analytics: true,
     templates: Boolean(features?.templateTable),
     happy: Boolean(features?.hasSpots),
     happyDates: Boolean(features?.hasDates),
@@ -888,6 +891,7 @@ export default function Home() {
           aria-label="Workspace tabs"
         >
           <Tab label="Blog articles" value="blog" />
+          <Tab label="Blog analytics" value="analytics" />
           {features?.templateTable && (
             <Tab label="Happy Wall templates" value="templates" />
           )}
@@ -923,6 +927,16 @@ export default function Home() {
             onSubmit={handleSubmit}
           />
         </>
+      )}
+
+      {safeTab === "analytics" && (
+        <AnalyticsSection
+          isConnected={isConnected}
+          client={supabaseClient}
+          environment={connectionValues.environment}
+          articles={articles}
+          onFeedback={setFeedbackMessage}
+        />
       )}
 
       {safeTab === "templates" && (
