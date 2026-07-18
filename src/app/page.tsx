@@ -542,11 +542,6 @@ export default function Home() {
 
       const numericId = Number(rawId);
       payload.id = Number.isNaN(numericId) ? rawId : numericId;
-
-      const rawCreatedAt = String(formValues.created_at ?? "").trim();
-      if (rawCreatedAt) {
-        payload.created_at = rawCreatedAt;
-      }
     }
 
     if (action !== "delete") {
@@ -904,6 +899,7 @@ export default function Home() {
           <ArticlesSection
             isConnected={isConnected}
             isLoading={isArticlesLoading}
+            client={supabaseClient}
             articles={articles}
             selectedArticleId={selectedArticleId}
             columns={columns}

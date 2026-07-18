@@ -1,6 +1,8 @@
 import type { BlogColumnDefinition, BlogRow, FieldUiType } from "@/types/blog";
 
-const READ_ONLY_COLUMNS = new Set(["id", "created_at", "updated_at"]);
+// `created_at` stays writable: back-dating an article changes where it lands
+// in the blog ordering, so it has to be editable after creation too.
+const READ_ONLY_COLUMNS = new Set(["id", "updated_at"]);
 
 const BLOG_OVERRIDES: Record<
   string,
@@ -10,7 +12,7 @@ const BLOG_OVERRIDES: Record<
   cover_url: { uiType: "url" },
   author_url: { uiType: "url" },
   read_in_minutes: { uiType: "number" },
-  created_at: { uiType: "datetime", readOnly: true },
+  created_at: { uiType: "datetime", readOnly: false },
 };
 
 export const DEFAULT_BLOG_COLUMNS: BlogColumnDefinition[] = [
@@ -20,7 +22,7 @@ export const DEFAULT_BLOG_COLUMNS: BlogColumnDefinition[] = [
     label: "Created Date",
     uiType: "datetime",
     required: false,
-    readOnly: true,
+    readOnly: false,
   },
   {
     name: "slug",

@@ -30,5 +30,7 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  // *.check.ts files are standalone Node scripts (run with
+  // --experimental-strip-types), not part of the Next build.
+  "exclude": ["node_modules", "**/*.check.ts"]
 }
