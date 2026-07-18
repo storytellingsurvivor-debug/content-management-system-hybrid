@@ -1,25 +1,37 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { parseUserAgent } from "./userAgent";
 
-export const BLOG_VIEW_TABLE = "blog_view";
+// Blog analytics read model.
+//
+// The public sites (Happy/Forever/Support Milo) already record readership with
+// two tables — we only READ them here, no new table and no tracker:
+//
+//   blog_views(id, blog_id, browser_signature, has_viewed, has_liked, created_at)
+//     one row per (article, browser) — the site de-duplicates on insert, so a
+//     row means "this browser read this article", not "one page hit".
+//   browsers(browser_signature, device, user_agent, url_source, created_at)
+//     one row per visitor browser; `url_source` is the URL they first landed on.
+//
+// Browser family and OS are not stored: we derive them from `user_agent` at
+// read time (see userAgent.ts).
 
-// One raw view event, as stored by the ingestion route. Every field except the
-// slug is optional because trackers in the wild send partial data.
+export const BLOG_VIEWS_TABLE = "blog_views";
+export const BROWSERS_TABLE = "browsers";
+
 export interface BlogViewRow {
   id?: number | string;
-  created_at?: string;
-  article_id?: number | string | null;
-  article_slug?: string | null;
-  language?: string | null;
-  landing_url?: string | null;
-  referrer?: string | null;
-  referrer_host?: string | null;
-  utm_source?: string | null;
-  utm_medium?: string | null;
-  utm_campaign?: string | null;
-  browser?: string | null;
-  os?: string | null;
-  device_type?: string | null;
-  visitor_hash?: string | null;
+  blog_id?: number | string | null;
+  browser_signature?: string | null;
+  has_viewed?: string | boolean | null;
+  has_liked?: string | boolean | null;
+  created_at?: string | null;
+}
+
+export interface BrowserRow {
+  browser_signature?: string | null;
+  device?: string | null;
+  user_agent?: string | null;
+  url_source?: string | null;
+  created_at?: string | null;
 }
 
 export interface DistributionSlice {
@@ -33,32 +45,23 @@ export interface DayBucket {
   count: number;
 }
 
-export interface ArticleAnalytics {
-  slug: string;
-  totalViews: number;
-  uniqueVisitors: number;
-  viewsLast7Days: number;
-  viewsLast30Days: number;
+export interface BlogAnalytics {
+  readers: number; // rows = unique (article, browser) pairs
+  uniqueVisitors: number; // distinct browser_signature
+  likes: number;
+  readersLast7Days: number;
+  readersLast30Days: number;
   lastViewedAt: string | null;
   browsers: DistributionSlice[];
   devices: DistributionSlice[];
   os: DistributionSlice[];
-  sources: DistributionSlice[]; // utm_source ?? referrer_host ?? "direct"
-  referrers: DistributionSlice[];
-  landingUrls: DistributionSlice[];
+  sources: DistributionSlice[]; // host of browsers.url_source
+  landingUrls: DistributionSlice[]; // raw browsers.url_source
   perDay: DayBucket[];
 }
 
-// Probes whether the analytics table exists on the connected DB, so the UI can
-// show setup instructions instead of an error when it hasn't been created yet.
-export async function blogViewTableExists(
-  client: SupabaseClient,
-): Promise<boolean> {
-  const { error } = await client
-    .from(BLOG_VIEW_TABLE)
-    .select("id", { count: "exact", head: true })
-    .limit(1);
-  return !error;
+export function isTrue(value: string | boolean | null | undefined): boolean {
+  return value === true || String(value ?? "").toLowerCase() === "true";
 }
 
 function normLabel(value: unknown, fallback: string): string {
@@ -66,11 +69,21 @@ function normLabel(value: unknown, fallback: string): string {
   return raw.length > 0 ? raw : fallback;
 }
 
+export function urlHost(url: string | null | undefined): string | null {
+  const raw = (url ?? "").trim();
+  if (!raw) return null;
+  try {
+    return new URL(raw).hostname.toLowerCase().replace(/^www\./, "") || null;
+  } catch {
+    return null;
+  }
+}
+
 // Count occurrences of a derived key, then turn the tallies into percentage
 // slices sorted from most to least common (capped to `limit` rows).
-function distribution(
-  rows: BlogViewRow[],
-  keyFn: (row: BlogViewRow) => string,
+function distribution<T>(
+  rows: T[],
+  keyFn: (row: T) => string,
   limit = 8,
 ): DistributionSlice[] {
   const total = rows.length;
@@ -104,31 +117,15 @@ function distribution(
   return head;
 }
 
-function sourceLabel(row: BlogViewRow): string {
-  const utm = normLabel(row.utm_source, "");
-  if (utm) return utm;
-  const host = normLabel(row.referrer_host, "");
-  if (host) return host;
-  const ref = normLabel(row.referrer, "");
-  if (ref) {
-    try {
-      return new URL(ref).hostname.replace(/^www\./, "");
-    } catch {
-      return ref;
-    }
-  }
-  return "Direct / none";
-}
-
-function toDayKey(value: string | undefined): string | null {
+function toDayKey(value: string | null | undefined): string | null {
   if (!value) return null;
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return null;
   return parsed.toISOString().slice(0, 10);
 }
 
-// Build a dense daily series (no gaps) for the last `days` days so a bar chart
-// renders an even x-axis even when some days had zero views.
+// Build a dense daily series (no gaps) for the last `days` days so the bar
+// chart renders an even x-axis even when some days had zero readers.
 function perDaySeries(rows: BlogViewRow[], days = 30): DayBucket[] {
   const counts = new Map<string, number>();
   for (const row of rows) {
@@ -156,42 +153,79 @@ function countSince(rows: BlogViewRow[], sinceMs: number): number {
   }, 0);
 }
 
-export function computeArticleAnalytics(
-  slug: string,
+export function computeBlogAnalytics(
   rows: BlogViewRow[],
-): ArticleAnalytics {
+  browsersBySignature: Map<string, BrowserRow>,
+): BlogAnalytics {
   const now = Date.now();
   const day = 24 * 60 * 60 * 1000;
 
-  const uniqueVisitors = new Set(
+  // Same visitor can appear once per article; count each browser once.
+  const signatures = new Set(
     rows
-      .map((row) => normLabel(row.visitor_hash, ""))
+      .map((row) => normLabel(row.browser_signature, ""))
       .filter((value) => value.length > 0),
-  ).size;
+  );
+
+  // One browser row per view, so distributions stay weighted by readership.
+  const visitorRows: BrowserRow[] = rows.map(
+    (row) =>
+      browsersBySignature.get(normLabel(row.browser_signature, "")) ?? {},
+  );
 
   const lastViewedAt = rows.reduce<string | null>((latest, row) => {
     if (!row.created_at) return latest;
     if (!latest) return row.created_at;
-    return new Date(row.created_at) > new Date(latest)
-      ? row.created_at
-      : latest;
+    return new Date(row.created_at) > new Date(latest) ? row.created_at : latest;
   }, null);
 
   return {
-    slug,
-    totalViews: rows.length,
-    uniqueVisitors,
-    viewsLast7Days: countSince(rows, now - 7 * day),
-    viewsLast30Days: countSince(rows, now - 30 * day),
+    readers: rows.length,
+    uniqueVisitors: signatures.size,
+    likes: rows.filter((row) => isTrue(row.has_liked)).length,
+    readersLast7Days: countSince(rows, now - 7 * day),
+    readersLast30Days: countSince(rows, now - 30 * day),
     lastViewedAt,
-    browsers: distribution(rows, (r) => normLabel(r.browser, "Unknown")),
-    devices: distribution(rows, (r) => normLabel(r.device_type, "unknown")),
-    os: distribution(rows, (r) => normLabel(r.os, "Unknown")),
-    sources: distribution(rows, sourceLabel),
-    referrers: distribution(rows, (r) =>
-      normLabel(r.referrer_host, "Direct / none"),
+    browsers: distribution(
+      visitorRows,
+      (b) => parseUserAgent(b.user_agent).browser,
     ),
-    landingUrls: distribution(rows, (r) => normLabel(r.landing_url, "—")),
+    // `device` is what the site itself recorded; fall back to the parsed UA.
+    devices: distribution(visitorRows, (b) =>
+      normLabel(b.device, parseUserAgent(b.user_agent).deviceType),
+    ),
+    os: distribution(visitorRows, (b) => parseUserAgent(b.user_agent).os),
+    sources: distribution(visitorRows, (b) =>
+      normLabel(urlHost(b.url_source), "Direct / none"),
+    ),
+    landingUrls: distribution(visitorRows, (b) => normLabel(b.url_source, "—")),
     perDay: perDaySeries(rows),
   };
+}
+
+// Group the raw rows by article, so every card can show its own numbers from a
+// single pair of queries. Key is `String(blog_id)` to match `String(row.id)`.
+export function computeAnalyticsByArticle(
+  rows: BlogViewRow[],
+  browsersBySignature: Map<string, BrowserRow>,
+): Map<string, BlogAnalytics> {
+  const grouped = new Map<string, BlogViewRow[]>();
+  for (const row of rows) {
+    const id = normLabel(row.blog_id == null ? "" : String(row.blog_id), "");
+    if (!id) continue;
+    const bucket = grouped.get(id);
+    if (bucket) bucket.push(row);
+    else grouped.set(id, [row]);
+  }
+
+  const byArticle = new Map<string, BlogAnalytics>();
+  for (const [id, articleRows] of grouped) {
+    byArticle.set(id, computeBlogAnalytics(articleRows, browsersBySignature));
+  }
+  return byArticle;
+}
+
+// The single most common label of a distribution, for the compact card view.
+export function topLabel(slices: DistributionSlice[]): string | null {
+  return slices.length > 0 ? slices[0].label : null;
 }

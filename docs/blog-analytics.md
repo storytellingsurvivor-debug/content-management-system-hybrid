@@ -1,111 +1,72 @@
-# Blog analytics (views, browsers & traffic sources)
+# Blog analytics (readers, browsers & traffic sources)
 
-This feature turns the CMS into a light back-office for measuring how each blog
-article performs: total views, unique visitors, browser / device breakdown and
-where the traffic came from (referrer domain, landing URL, UTM source).
-
-It has three moving parts:
-
-```
-Public blog article page          CMS (this app)                 Supabase
-─────────────────────────         ───────────────────            ─────────────
-public/blog-tracker.js  ──POST──▶ /api/blog/track  ──insert──▶  blog_view table
-                                  AnalyticsSection ◀──select───  (RLS: anon read)
-```
-
-## 1. Create the table
-
-Run the migration in the Supabase SQL editor (once per project / environment):
+Readership lives inside the **Blog articles** tab, next to create / update /
+delete — there is no separate analytics tab. It is read-only: the CMS does
+**not** create a table and does **not** ship a tracker. The public Milo sites
+already record readership, and the CMS just aggregates what they wrote.
 
 ```
-supabase/migrations/20260717_blog_view_analytics.sql
+Public site (Happy/Forever/Support Milo)      Supabase            CMS (this app)
+────────────────────────────────────────      ────────────        ──────────────
+recordBlogView()      ──insert──▶  blog_views  ──┐
+postBrowserCheckIn()  ──insert──▶  browsers    ──┴──select──▶  AnalyticsSection
 ```
 
-It creates the `blog_view` table, indexes and Row Level Security:
+## The two tables it reads
 
-- **anon SELECT** is allowed → the CMS dashboard (browser, anon key) can read
-  aggregates.
-- **no anon INSERT** → writes only happen through the ingestion route using the
-  service-role key, so the public anon key can't be used to spam rows.
+`blog_views` — one row per **(article, browser)** pair. The site checks for an
+existing row before inserting, so a row means "this browser read this article",
+not "one page hit". Repeat visits are never double-counted.
 
-If you would rather have the public site insert directly with the anon key (no
-server route), uncomment the `blog_view anon insert` policy at the bottom of the
-migration and point the tracker's `data-endpoint` at PostgREST instead.
+| column              | meaning                                       |
+| ------------------- | --------------------------------------------- |
+| `blog_id`           | points at `blog.id` (a specific language row)  |
+| `browser_signature` | opaque visitor id, joins to `browsers`         |
+| `has_viewed`        | text `"true"` / `"false"`                      |
+| `has_liked`         | text `"true"` / `"false"`                      |
+| `created_at`        | first read timestamp                           |
 
-## 2. Configure the ingestion route
+`browsers` — one row per visitor browser, written on first visit.
 
-`/api/blog/track` (in this app) enriches each event with the parsed user-agent
-and inserts it with the **service-role** key. It reads the same environment
-variables the existing webhooks use:
+| column              | meaning                                    |
+| ------------------- | ------------------------------------------ |
+| `browser_signature` | primary key                                |
+| `device`            | device string recorded by the site         |
+| `user_agent`        | raw UA — browser family & OS are parsed from this at read time (`src/lib/userAgent.ts`) |
+| `url_source`        | URL the visitor first landed on            |
 
-| Env var                             | Used for            |
-| ----------------------------------- | ------------------- |
-| `SUPABASE_URL_PROD`                 | prod project URL    |
-| `SUPABASE_SERVICE_ROLE_KEY_PROD`    | prod service role   |
-| `SUPABASE_URL_STAGING`              | staging project URL |
-| `SUPABASE_SERVICE_ROLE_KEY_STAGING` | staging service role|
+Note `browsers` covers the **whole site**, not just blog readers, so the CMS
+only fetches the signatures that appear in `blog_views` (chunked `.in()`).
 
-The tracker picks the environment with `data-env="prod"` (default) or
-`data-env="staging"`.
+## What you see
 
-> Service-role keys are server-only. They must **never** appear in the public
-> site or in browser code — the tracker only talks to `/api/blog/track`.
+Under the article cards sits one **collapsible** panel — closed by default, so
+it stays out of the way. Its toggle always shows the headline count. Select a
+card and the panel reports that article; deselect ("Clear selection") and it
+summarises every article at once. Cards themselves are unchanged.
 
-## 3. Add the tracker to public article pages
+- **Reads** — rows in `blog_views` (scoped to the selected article).
+- **Unique visitors** — distinct `browser_signature`.
+- **Likes** — rows with `has_liked = "true"`.
+- **First reads · last 30 days** — daily buckets of `created_at`. It is a *first
+  read* series by construction, since a row is only inserted once per browser.
+- **Browsers / Operating systems** — derived from `browsers.user_agent`.
+- **Devices** — `browsers.device`, falling back to the parsed UA when empty.
+- **Traffic sources / Landing URLs** — host and raw value of `browsers.url_source`.
 
-Include the script on each article page. It sends one anonymous event per page
-load (no cookies, no IP, no PII — only a random opaque id in `localStorage` to
-approximate unique visitors):
+## What it deliberately does not do
 
-```html
-<script
-  src="https://<your-cms-domain>/blog-tracker.js"
-  data-slug="tu-nes-pas-seul"   <!-- omit to infer from the URL's last segment -->
-  data-article-id="42"          <!-- optional -->
-  data-language="fr"            <!-- optional -->
-  data-env="prod"               <!-- "prod" (default) | "staging" -->
-  defer
-></script>
-```
+No UTM breakdown and no referrer domains: neither is stored. `url_source` is the
+closest signal available. Adding real acquisition data means changing what the
+**public site** records, not adding a second tracking pipeline in the CMS.
 
-- The endpoint defaults to the script's own origin + `/api/blog/track`. If the
-  CMS is deployed elsewhere, set `data-endpoint="https://.../api/blog/track"`.
-- UTM parameters (`utm_source`, `utm_medium`, `utm_campaign`) and
-  `document.referrer` are captured automatically from the visitor's URL.
-
-### Sending events yourself (SPA / server)
-
-Any client can POST JSON instead of using the script:
+## Checks
 
 ```
-POST /api/blog/track
-Content-Type: application/json
-
-{
-  "slug": "tu-nes-pas-seul",
-  "article_id": 42,
-  "language": "fr",
-  "env": "prod",
-  "landing_url": "https://happymilo.com/blog/tu-nes-pas-seul?utm_source=newsletter",
-  "referrer": "https://www.google.com/",
-  "utm_source": "newsletter",
-  "visitor_hash": "b2c1..."
-}
+node --experimental-strip-types src/lib/blogAnalytics.check.ts
+node --experimental-strip-types src/lib/blogFormSchema.check.ts
 ```
 
-Only `slug` is required. `browser`, `os`, `device_type` and `referrer_host` are
-derived server-side, so you don't send them.
-
-## 4. Read the analytics
-
-Open the CMS, connect to the brand's Supabase, and use the **Blog analytics**
-tab:
-
-- Pick **All articles** for the site-wide view + a "top articles" leaderboard,
-  or a single article to drill in.
-- KPI tiles: total views, unique visitors, last 7 / 30 days.
-- A 30-day daily views bar chart.
-- Distribution bars: browsers, devices, traffic sources (UTM / referrer),
-  operating systems, referrer domains and landing URLs.
-
-If the tab says the table doesn't exist yet, run step 1 and click **Re-check**.
+The second one pins which blog columns stay writable — notably `created_at`,
+which the editor must be able to change after creation (back-dating an article
+moves it in the blog ordering). Only `id` and `updated_at` are DB-owned.

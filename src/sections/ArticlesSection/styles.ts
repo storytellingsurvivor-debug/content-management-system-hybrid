@@ -121,3 +121,73 @@ export const cardMetaRowSx: SxProps<Theme> = {
   color: "text.secondary",
   fontSize: 12,
 };
+
+// Collapsible readership panel under the card row.
+export const statsToggleWrapSx: SxProps<Theme> = {
+  mt: 3,
+  pt: 1,
+  borderTop: 1,
+  borderColor: "divider",
+};
+
+export const statsPanelSx: SxProps<Theme> = {
+  pt: 1,
+};
+
+export const kpiGridSx: SxProps<Theme> = {
+  mt: 1,
+  display: "grid",
+  gap: 1.5,
+  gridTemplateColumns: {
+    xs: "1fr 1fr",
+    md: "repeat(5, 1fr)",
+  },
+};
+
+export const kpiTileSx: SxProps<Theme> = {
+  p: 1.5,
+  display: "flex",
+  flexDirection: "column",
+  gap: 0.25,
+};
+
+export const distGridSx: SxProps<Theme> = {
+  mt: 2,
+  display: "grid",
+  gap: 2,
+  gridTemplateColumns: {
+    xs: "1fr",
+    md: "1fr 1fr",
+  },
+};
+
+export const distCardSx: SxProps<Theme> = {
+  p: 2,
+};
+
+export const barRowSx: SxProps<Theme> = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 0.4,
+  mb: 1.25,
+};
+
+export const barLabelRowSx: SxProps<Theme> = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 1,
+  fontSize: 13,
+};
+
+export const sparklineWrapSx: SxProps<Theme> = {
+  mt: 2,
+  p: 2,
+};
+
+export const sparklineRowSx: SxProps<Theme> = {
+  display: "flex",
+  alignItems: "flex-end",
+  gap: "2px",
+  height: 100,
+  mt: 1.5,
+};

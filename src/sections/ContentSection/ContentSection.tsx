@@ -247,9 +247,9 @@ export function ContentSection({
             <Box sx={editorColumnSx}>
               {columns.map((column) => {
                 const value = values[column.name];
+                // `id` is the only field the DB owns after creation.
                 const createModeEditableSystemField =
-                  mode === "create" &&
-                  (column.name === "id" || column.name === "created_at");
+                  mode === "create" && column.name === "id";
                 const isReadOnly =
                   column.readOnly && !createModeEditableSystemField;
                 if (column.uiType === "boolean") {
