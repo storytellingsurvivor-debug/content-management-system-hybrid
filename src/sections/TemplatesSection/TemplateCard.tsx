@@ -21,6 +21,11 @@ interface TemplateCardProps {
   template: BlogRow;
   isSelected: boolean;
   onSelect: () => void;
+  // Resolved by the caller for tables whose display values live in another row
+  // (a spot's image and note sit on its main tag). Each falls back to the keys
+  // found on the row itself.
+  coverUrl?: string | null;
+  subtitleOverride?: string | null;
 }
 
 const COVER_KEYS = [
@@ -77,16 +82,19 @@ export function TemplateCard({
   template,
   isSelected,
   onSelect,
+  coverUrl,
+  subtitleOverride,
 }: TemplateCardProps) {
   const active = template.is_active !== false;
   const title =
-    pickString(template, "hero_title", "metadata_title", "slug") ||
+    pickString(template, "hero_title", "name", "metadata_title", "slug") ||
     "Untitled template";
   const slug = pickString(template, "slug");
   const brand = pickString(template, "brand");
   const language = pickString(template, "language", "lang", "locale");
-  const subtitle = pickString(template, "hero_subtitle", "description");
-  const cover = pickCoverUrl(template);
+  const subtitle =
+    subtitleOverride || pickString(template, "hero_subtitle", "description");
+  const cover = coverUrl || pickCoverUrl(template);
   const coverColor = pickString(template, "color", "background_color");
   const emoji = pickString(template, "emoji");
   const createdAt = formatDate(template.created_at);
