@@ -28,7 +28,10 @@ const SPOT_COLUMNS: BlogColumnDefinition[] = [
   { name: "author_image", label: "Author Image URL", uiType: "url", required: false, readOnly: false },
   { name: "views", label: "Views", uiType: "number", required: false, readOnly: true },
   { name: "structured_data", label: "Structured Data (JSON)", uiType: "json", required: false, readOnly: false },
-  { name: "markdown_content", label: "Markdown Content", uiType: "markdown", required: false, readOnly: false },
+  // Legacy: page content is tag-led now, edit it under "Spot content per tag".
+  // Read-only rather than removed so the pre-migration copy stays visible for
+  // spots with no main tag, which got no row in the backfill.
+  { name: "markdown_content", label: "Markdown Content (legacy, not displayed)", uiType: "markdown", required: false, readOnly: true },
   { name: "metadata_title", label: "Metadata Title", uiType: "text", required: false, readOnly: false },
   { name: "metadata_description", label: "Metadata Description", uiType: "text", required: false, readOnly: false },
   { name: "metadata_keywords", label: "Metadata Keywords", uiType: "text", required: false, readOnly: false },
