@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Alert, Box, Chip, Typography } from "@mui/material";
 import type { BlogRow } from "@/types/blog";
 import { HAPPY_TABLES } from "@/lib/happySpotSchema";
@@ -62,14 +62,6 @@ export function SpotTagContentPanel({
     [tagContents.rows, spotId],
   );
 
-  if (!spotId || !spotRow) {
-    return (
-      <Alert severity="info" sx={{ mt: 3 }}>
-        Pick a spot above to edit what it shows for each of its tags.
-      </Alert>
-    );
-  }
-
   const openTag = (tagId: number) => {
     const existing = rowsForSpot.find((row) => Number(row.tag_id) === tagId);
     if (existing) {
@@ -85,6 +77,45 @@ export function SpotTagContentPanel({
   const editingTagId = numberOr(tagContents.form.tag_id);
   const editingThisSpot = numberOr(tagContents.form.spot_id) === spotId;
 
+  // Selecting a spot opens its main tag straight away — that row is what the
+  // page shows by default, so it is the one you almost always want.
+  const openedForSpot = useRef<number | null>(null);
+  const mainTag = spotTags.find((tag) => tag.isMain);
+  useEffect(() => {
+    if (!spotId || !mainTag || openedForSpot.current === spotId) return;
+    openedForSpot.current = spotId;
+    openTag(mainTag.id);
+    // openTag is stable enough here: it only reads the current rows.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spotId, mainTag?.id]);
+
+  // What the spot page will actually render, resolved the same way the site
+  // does it: media from the main tag's row, SEO from the spot.
+  const mainRow = rowsForSpot.find((row) => Number(row.tag_id) === mainTag?.id);
+  const resolved = spotRow
+    ? {
+        image: String(mainRow?.image_url ?? ""),
+        heading: String(spotRow.name ?? ""),
+        note: String(mainRow?.note ?? ""),
+        metaTitle: String(spotRow.metadata_title ?? spotRow.name ?? ""),
+        metaDescription: String(
+          spotRow.metadata_description ??
+            mainRow?.note ??
+            spotRow.address ??
+            spotRow.city ??
+            "",
+        ),
+      }
+    : null;
+
+  if (!spotId || !spotRow) {
+    return (
+      <Alert severity="info" sx={{ mt: 3 }}>
+        Pick a spot above to edit what it shows for each of its tags.
+      </Alert>
+    );
+  }
+
   return (
     <Box sx={{ mt: 4 }}>
       <Typography variant="h6" sx={{ fontWeight: 700 }}>
@@ -94,6 +125,70 @@ export function SpotTagContentPanel({
         The main tag is the default view of the page. The other tags become
         blocks the visitor can switch to.
       </Typography>
+
+      {resolved && (
+        <Box
+          sx={{
+            display: "flex",
+            gap: 2,
+            p: 2,
+            mb: 2,
+            border: 1,
+            borderColor: "divider",
+            borderRadius: 1,
+          }}
+        >
+          {resolved.image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={resolved.image}
+              alt=""
+              style={{
+                width: 96,
+                height: 96,
+                objectFit: "cover",
+                objectPosition: "center",
+                borderRadius: 4,
+                flexShrink: 0,
+              }}
+            />
+          ) : (
+            <Box
+              sx={{
+                width: 96,
+                height: 96,
+                flexShrink: 0,
+                borderRadius: 1,
+                bgcolor: "action.hover",
+                display: "grid",
+                placeItems: "center",
+                fontSize: 12,
+                opacity: 0.6,
+              }}
+            >
+              no image
+            </Box>
+          )}
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="caption" sx={{ opacity: 0.6 }}>
+              What the spot page will show
+            </Typography>
+            <Typography sx={{ fontWeight: 700 }}>{resolved.heading}</Typography>
+            {resolved.note && (
+              <Typography variant="body2" sx={{ fontStyle: "italic" }}>
+                “{resolved.note}”
+              </Typography>
+            )}
+            <Typography variant="body2" sx={{ mt: 1, opacity: 0.75 }}>
+              <strong>Meta title:</strong> {resolved.metaTitle || "—"}
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.75 }}>
+              <strong>Meta description:</strong>{" "}
+              {resolved.metaDescription || "—"}
+            </Typography>
+          </Box>
+        </Box>
+      )}
 
       {spotTags.length === 0 ? (
         <Alert severity="warning">
