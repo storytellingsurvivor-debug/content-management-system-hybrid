@@ -2,6 +2,7 @@ import type { BlogColumnDefinition, BlogRow } from "@/types/blog";
 
 export const HAPPY_SPOT_TABLE = "happy_spot";
 export const HAPPY_SPOT_TAG_TABLE = "happy_spot_tag";
+export const HAPPY_SPOT_TAG_CONTENT_TABLE = "happy_spot_tag_content";
 
 export interface FieldGroup {
   title: string;
@@ -61,6 +62,21 @@ const TAG_COLUMNS: BlogColumnDefinition[] = [
   { name: "article_blog_slugs", label: "Article Blog Slugs", uiType: "stringArray", required: false, readOnly: false },
 ];
 
+// Per-tag content variant of a spot. Only for tags OTHER than the spot's main
+// tag: the main tag's content is the spot's own columns.
+const SPOT_TAG_CONTENT_COLUMNS: BlogColumnDefinition[] = [
+  { name: "id", label: "Id", uiType: "text", required: false, readOnly: true },
+  { name: "created_at", label: "Created Date", uiType: "datetime", required: false, readOnly: true },
+  { name: "spot_id", label: "Spot Id", uiType: "number", required: true, readOnly: false },
+  { name: "tag_id", label: "Tag Id", uiType: "number", required: true, readOnly: false },
+  { name: "is_active", label: "Is Active", uiType: "boolean", required: false, readOnly: false },
+  { name: "position", label: "Position", uiType: "number", required: false, readOnly: false },
+  { name: "title", label: "Title", uiType: "text", required: false, readOnly: false },
+  { name: "image_url", label: "Image URL", uiType: "url", required: false, readOnly: false },
+  { name: "note", label: "Note", uiType: "text", required: false, readOnly: false },
+  { name: "markdown_content", label: "Markdown Content", uiType: "markdown", required: false, readOnly: false },
+];
+
 const SPOT_GROUPS: FieldGroup[] = [
   { title: "Identity", fields: ["id", "created_at", "slug", "language", "name", "is_active"] },
   { title: "Location", fields: ["address", "city", "lat", "lng"] },
@@ -77,6 +93,11 @@ const TAG_GROUPS: FieldGroup[] = [
   { title: "Metadata", fields: ["metadata_title", "metadata_description", "metadata_keywords", "markdown_content", "article_blog_slugs"] },
 ];
 
+const SPOT_TAG_CONTENT_GROUPS: FieldGroup[] = [
+  { title: "Link", fields: ["id", "created_at", "spot_id", "tag_id", "is_active", "position"] },
+  { title: "Content", fields: ["title", "image_url", "note", "markdown_content"] },
+];
+
 export interface HappyTableConfig {
   table: string;
   label: string;
@@ -84,9 +105,18 @@ export interface HappyTableConfig {
   groups: FieldGroup[];
 }
 
-export const HAPPY_TABLES: Record<"spots" | "tags", HappyTableConfig> = {
+export const HAPPY_TABLES: Record<
+  "spots" | "tags" | "tagContents",
+  HappyTableConfig
+> = {
   spots: { table: HAPPY_SPOT_TABLE, label: "Spots", columns: SPOT_COLUMNS, groups: SPOT_GROUPS },
   tags: { table: HAPPY_SPOT_TAG_TABLE, label: "Tags", columns: TAG_COLUMNS, groups: TAG_GROUPS },
+  tagContents: {
+    table: HAPPY_SPOT_TAG_CONTENT_TABLE,
+    label: "Tag content",
+    columns: SPOT_TAG_CONTENT_COLUMNS,
+    groups: SPOT_TAG_CONTENT_GROUPS,
+  },
 };
 
 const MULTILINE_UI_TYPES = new Set(["markdown", "json", "stringArray", "numberArray"]);
