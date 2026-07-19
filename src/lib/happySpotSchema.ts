@@ -73,7 +73,6 @@ const SPOT_TAG_CONTENT_COLUMNS: BlogColumnDefinition[] = [
   { name: "tag_id", label: "Tag Id", uiType: "number", required: true, readOnly: false },
   { name: "is_active", label: "Is Active", uiType: "boolean", required: false, readOnly: false },
   { name: "position", label: "Position (main tag is always shown first)", uiType: "number", required: false, readOnly: false },
-  { name: "title", label: "Title (heading above the block)", uiType: "text", required: false, readOnly: false },
   { name: "image_url", label: "Image URL", uiType: "url", required: false, readOnly: false },
   { name: "note", label: "Note", uiType: "text", required: false, readOnly: false },
   { name: "markdown_content", label: "Markdown Content", uiType: "markdown", required: false, readOnly: false },
@@ -98,7 +97,7 @@ const TAG_GROUPS: FieldGroup[] = [
 
 const SPOT_TAG_CONTENT_GROUPS: FieldGroup[] = [
   { title: "Link", fields: ["id", "created_at", "spot_id", "tag_id", "is_active", "position"] },
-  { title: "Content", fields: ["title", "image_url", "note", "markdown_content", "article_blog_slugs"] },
+  { title: "Content", fields: ["image_url", "note", "markdown_content", "article_blog_slugs"] },
 ];
 
 export interface HappyTableConfig {
