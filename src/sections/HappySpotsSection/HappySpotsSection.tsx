@@ -4,10 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { Alert, Box, Tab, Tabs } from "@mui/material";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { EnvironmentLabel } from "@/types/connection";
+import type { BlogRow } from "@/types/blog";
 import { HAPPY_TABLES } from "@/lib/happySpotSchema";
 import { TemplatesSection } from "@/sections/TemplatesSection/TemplatesSection";
 import { HappyTableEditor } from "./HappyTableEditor";
 import { useHappyTable } from "./useHappyTable";
+import { SpotTagContentPanel } from "./SpotTagContentPanel";
 
 interface HappySpotsSectionProps {
   isConnected: boolean;
@@ -28,12 +30,19 @@ export function HappySpotsSection({
 
   const spots = useHappyTable(client, HAPPY_TABLES.spots, environment, onFeedback);
   const tags = useHappyTable(client, HAPPY_TABLES.tags, environment, onFeedback);
+  const tagContents = useHappyTable(
+    client,
+    HAPPY_TABLES.tagContents,
+    environment,
+    onFeedback,
+  );
 
   useEffect(() => {
     if (!isConnected || !client) return;
     void spots.load();
     void tags.load();
-    // Load both once connected; the hook callbacks are stable per client.
+    void tagContents.load();
+    // Load all once connected; the hook callbacks are stable per client.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected, client]);
 
@@ -56,6 +65,27 @@ export function HappySpotsSection({
         .filter((option) => option.value),
     [tags.rows],
   );
+
+  // A spot's image and note live on its main tag's content row, so the browse
+  // cards have to look them up instead of reading the spot itself.
+  const spotDisplayBySpotId = useMemo(() => {
+    const contentByKey = new Map<string, BlogRow>();
+    for (const row of tagContents.rows) {
+      contentByKey.set(`${row.spot_id}:${row.tag_id}`, row);
+    }
+    const display = new Map<
+      number,
+      { coverUrl: string | null; subtitle: string | null }
+    >();
+    for (const spot of spots.rows) {
+      const content = contentByKey.get(`${spot.id}:${spot.main_tag_id}`);
+      display.set(Number(spot.id), {
+        coverUrl: String(content?.image_url ?? "").trim() || null,
+        subtitle: String(content?.note ?? "").trim() || null,
+      });
+    }
+    return display;
+  }, [tagContents.rows, spots.rows]);
 
   return (
     <>
@@ -87,6 +117,11 @@ export function HappySpotsSection({
         onSelectTemplate={active.select}
         onCreateNew={active.createNew}
         onRefresh={active.load}
+        resolveDisplay={
+          subTab === "spots"
+            ? (row) => spotDisplayBySpotId.get(Number(row.id)) ?? {}
+            : undefined
+        }
       />
 
       <HappyTableEditor
@@ -109,6 +144,15 @@ export function HappySpotsSection({
         onFieldChange={active.changeField}
         onSubmit={active.submit}
       />
+
+      {subTab === "spots" && (
+        <SpotTagContentPanel
+          isConnected={isConnected}
+          spots={spots}
+          tags={tags}
+          tagContents={tagContents}
+        />
+      )}
     </>
   );
 }

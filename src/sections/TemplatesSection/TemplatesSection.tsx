@@ -33,6 +33,11 @@ interface TemplatesSectionProps {
   onRefresh: () => void | Promise<void>;
   title?: string;
   tableName?: string;
+  // Resolve display values when they are not stored on the row itself.
+  resolveDisplay?: (row: BlogRow) => {
+    coverUrl?: string | null;
+    subtitle?: string | null;
+  };
 }
 
 function templateOptionValue(row: BlogRow): string {
@@ -70,6 +75,7 @@ export function TemplatesSection({
   onSelectTemplate,
   onCreateNew,
   onRefresh,
+  resolveDisplay,
   title = "2. Templates",
   tableName = TEMPLATE_TABLE,
 }: TemplatesSectionProps) {
@@ -199,6 +205,8 @@ export function TemplatesSection({
                     template={template}
                     isSelected={value === selectedTemplateId}
                     onSelect={() => onSelectTemplate(value)}
+                    coverUrl={resolveDisplay?.(template)?.coverUrl}
+                    subtitleOverride={resolveDisplay?.(template)?.subtitle}
                   />
                 );
               })}

@@ -2,6 +2,7 @@ import type { BlogColumnDefinition, BlogRow } from "@/types/blog";
 
 export const HAPPY_SPOT_TABLE = "happy_spot";
 export const HAPPY_SPOT_TAG_TABLE = "happy_spot_tag";
+export const HAPPY_SPOT_TAG_CONTENT_TABLE = "happy_spot_tag_content";
 
 export interface FieldGroup {
   title: string;
@@ -21,19 +22,21 @@ const SPOT_COLUMNS: BlogColumnDefinition[] = [
   { name: "lng", label: "Longitude", uiType: "number", required: true, readOnly: false },
   { name: "main_tag_id", label: "Main Tag Id", uiType: "number", required: false, readOnly: false },
   { name: "tag_ids", label: "Tag Ids", uiType: "numberArray", required: false, readOnly: false },
-  { name: "image_url", label: "Image URL", uiType: "url", required: false, readOnly: false },
-  { name: "note", label: "Note", uiType: "text", required: false, readOnly: false },
   { name: "author", label: "Author", uiType: "text", required: true, readOnly: false },
   { name: "author_image", label: "Author Image URL", uiType: "url", required: false, readOnly: false },
   { name: "views", label: "Views", uiType: "number", required: false, readOnly: true },
   { name: "structured_data", label: "Structured Data (JSON)", uiType: "json", required: false, readOnly: false },
-  { name: "markdown_content", label: "Markdown Content", uiType: "markdown", required: false, readOnly: false },
   { name: "metadata_title", label: "Metadata Title", uiType: "text", required: false, readOnly: false },
   { name: "metadata_description", label: "Metadata Description", uiType: "text", required: false, readOnly: false },
   { name: "metadata_keywords", label: "Metadata Keywords", uiType: "text", required: false, readOnly: false },
-  { name: "article_blog_slugs", label: "Article Blog Slugs", uiType: "stringArray", required: false, readOnly: false },
-  { name: "browser_signature", label: "Browser Signature", uiType: "text", required: false, readOnly: false },
 ];
+// A spot row holds identity, location, tags and SEO. Everything the page
+// DISPLAYS — image, note, copy, related articles — lives on its tags, under
+// "Spot content per tag": the main tag's row is the default view.
+//
+// browser_signature is not editable either: it is an anti-abuse token written
+// server-side when a visitor submits a spot. Public reads blank it and nothing
+// shows it; editing it by hand only breaks the delete gate.
 
 const TAG_COLUMNS: BlogColumnDefinition[] = [
   { name: "id", label: "Id", uiType: "text", required: false, readOnly: true },
@@ -61,12 +64,27 @@ const TAG_COLUMNS: BlogColumnDefinition[] = [
   { name: "article_blog_slugs", label: "Article Blog Slugs", uiType: "stringArray", required: false, readOnly: false },
 ];
 
+// What a spot displays, per tag. The main tag's row is the default view of the
+// page; the spot's other tags become blocks the visitor can switch to.
+const SPOT_TAG_CONTENT_COLUMNS: BlogColumnDefinition[] = [
+  { name: "id", label: "Id", uiType: "text", required: false, readOnly: true },
+  { name: "created_at", label: "Created Date", uiType: "datetime", required: false, readOnly: true },
+  { name: "spot_id", label: "Spot Id", uiType: "number", required: true, readOnly: false },
+  { name: "tag_id", label: "Tag Id", uiType: "number", required: true, readOnly: false },
+  { name: "is_active", label: "Is Active", uiType: "boolean", required: false, readOnly: false },
+  { name: "position", label: "Position (main tag is always shown first)", uiType: "number", required: false, readOnly: false },
+  { name: "image_url", label: "Image URL", uiType: "url", required: false, readOnly: false },
+  { name: "note", label: "Note", uiType: "text", required: false, readOnly: false },
+  { name: "markdown_content", label: "Markdown Content", uiType: "markdown", required: false, readOnly: false },
+  { name: "article_blog_slugs", label: "Article Blog Slugs", uiType: "stringArray", required: false, readOnly: false },
+];
+
 const SPOT_GROUPS: FieldGroup[] = [
   { title: "Identity", fields: ["id", "created_at", "slug", "language", "name", "is_active"] },
   { title: "Location", fields: ["address", "city", "lat", "lng"] },
   { title: "Tags", fields: ["main_tag_id", "tag_ids"] },
-  { title: "Content", fields: ["image_url", "note", "author", "author_image", "views", "markdown_content", "structured_data"] },
-  { title: "Metadata", fields: ["metadata_title", "metadata_description", "metadata_keywords", "article_blog_slugs", "browser_signature"] },
+  { title: "Author", fields: ["author", "author_image", "views"] },
+  { title: "Metadata", fields: ["metadata_title", "metadata_description", "metadata_keywords", "structured_data"] },
 ];
 
 const TAG_GROUPS: FieldGroup[] = [
@@ -77,6 +95,11 @@ const TAG_GROUPS: FieldGroup[] = [
   { title: "Metadata", fields: ["metadata_title", "metadata_description", "metadata_keywords", "markdown_content", "article_blog_slugs"] },
 ];
 
+const SPOT_TAG_CONTENT_GROUPS: FieldGroup[] = [
+  { title: "Link", fields: ["id", "created_at", "spot_id", "tag_id", "is_active", "position"] },
+  { title: "Content", fields: ["image_url", "note", "markdown_content", "article_blog_slugs"] },
+];
+
 export interface HappyTableConfig {
   table: string;
   label: string;
@@ -84,9 +107,18 @@ export interface HappyTableConfig {
   groups: FieldGroup[];
 }
 
-export const HAPPY_TABLES: Record<"spots" | "tags", HappyTableConfig> = {
+export const HAPPY_TABLES: Record<
+  "spots" | "tags" | "tagContents",
+  HappyTableConfig
+> = {
   spots: { table: HAPPY_SPOT_TABLE, label: "Spots", columns: SPOT_COLUMNS, groups: SPOT_GROUPS },
   tags: { table: HAPPY_SPOT_TAG_TABLE, label: "Tags", columns: TAG_COLUMNS, groups: TAG_GROUPS },
+  tagContents: {
+    table: HAPPY_SPOT_TAG_CONTENT_TABLE,
+    label: "Tag content",
+    columns: SPOT_TAG_CONTENT_COLUMNS,
+    groups: SPOT_TAG_CONTENT_GROUPS,
+  },
 };
 
 const MULTILINE_UI_TYPES = new Set(["markdown", "json", "stringArray", "numberArray"]);
