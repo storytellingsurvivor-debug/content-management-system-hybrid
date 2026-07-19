@@ -28,16 +28,17 @@ const SPOT_COLUMNS: BlogColumnDefinition[] = [
   { name: "author_image", label: "Author Image URL", uiType: "url", required: false, readOnly: false },
   { name: "views", label: "Views", uiType: "number", required: false, readOnly: true },
   { name: "structured_data", label: "Structured Data (JSON)", uiType: "json", required: false, readOnly: false },
-  // Legacy: page content is tag-led now, edit it under "Spot content per tag".
-  // Read-only rather than removed so the pre-migration copy stays visible for
-  // spots with no main tag, which got no row in the backfill.
-  { name: "markdown_content", label: "Markdown Content (legacy, not displayed)", uiType: "markdown", required: false, readOnly: true },
   { name: "metadata_title", label: "Metadata Title", uiType: "text", required: false, readOnly: false },
   { name: "metadata_description", label: "Metadata Description", uiType: "text", required: false, readOnly: false },
   { name: "metadata_keywords", label: "Metadata Keywords", uiType: "text", required: false, readOnly: false },
   { name: "article_blog_slugs", label: "Article Blog Slugs", uiType: "stringArray", required: false, readOnly: false },
-  { name: "browser_signature", label: "Browser Signature", uiType: "text", required: false, readOnly: false },
 ];
+// Not editable here, on purpose:
+//   markdown_content  — page content is tag-led, edit it under "Spot content
+//                       per tag". The column still holds the pre-migration copy.
+//   browser_signature — anti-abuse token written server-side when a visitor
+//                       submits a spot. Public reads blank it and nothing shows
+//                       it; editing it by hand only breaks the delete gate.
 
 const TAG_COLUMNS: BlogColumnDefinition[] = [
   { name: "id", label: "Id", uiType: "text", required: false, readOnly: true },
@@ -73,8 +74,8 @@ const SPOT_TAG_CONTENT_COLUMNS: BlogColumnDefinition[] = [
   { name: "spot_id", label: "Spot Id", uiType: "number", required: true, readOnly: false },
   { name: "tag_id", label: "Tag Id", uiType: "number", required: true, readOnly: false },
   { name: "is_active", label: "Is Active", uiType: "boolean", required: false, readOnly: false },
-  { name: "position", label: "Position", uiType: "number", required: false, readOnly: false },
-  { name: "title", label: "Title", uiType: "text", required: false, readOnly: false },
+  { name: "position", label: "Position (main tag is always shown first)", uiType: "number", required: false, readOnly: false },
+  { name: "title", label: "Title (heading above the block)", uiType: "text", required: false, readOnly: false },
   { name: "image_url", label: "Image URL", uiType: "url", required: false, readOnly: false },
   { name: "note", label: "Note", uiType: "text", required: false, readOnly: false },
   { name: "markdown_content", label: "Markdown Content", uiType: "markdown", required: false, readOnly: false },
@@ -84,8 +85,8 @@ const SPOT_GROUPS: FieldGroup[] = [
   { title: "Identity", fields: ["id", "created_at", "slug", "language", "name", "is_active"] },
   { title: "Location", fields: ["address", "city", "lat", "lng"] },
   { title: "Tags", fields: ["main_tag_id", "tag_ids"] },
-  { title: "Content", fields: ["image_url", "note", "author", "author_image", "views", "markdown_content", "structured_data"] },
-  { title: "Metadata", fields: ["metadata_title", "metadata_description", "metadata_keywords", "article_blog_slugs", "browser_signature"] },
+  { title: "Content", fields: ["image_url", "note", "author", "author_image", "views", "structured_data"] },
+  { title: "Metadata", fields: ["metadata_title", "metadata_description", "metadata_keywords", "article_blog_slugs"] },
 ];
 
 const TAG_GROUPS: FieldGroup[] = [
