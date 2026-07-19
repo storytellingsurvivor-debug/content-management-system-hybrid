@@ -8,6 +8,7 @@ import { HAPPY_TABLES } from "@/lib/happySpotSchema";
 import { TemplatesSection } from "@/sections/TemplatesSection/TemplatesSection";
 import { HappyTableEditor } from "./HappyTableEditor";
 import { useHappyTable } from "./useHappyTable";
+import { SpotTagContentPanel } from "./SpotTagContentPanel";
 
 interface HappySpotsSectionProps {
   isConnected: boolean;
@@ -16,7 +17,7 @@ interface HappySpotsSectionProps {
   onFeedback: (message: string | null) => void;
 }
 
-type HappySubTab = "spots" | "tags" | "tagContents";
+type HappySubTab = "spots" | "tags";
 
 export function HappySpotsSection({
   isConnected,
@@ -44,8 +45,7 @@ export function HappySpotsSection({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected, client]);
 
-  const active =
-    subTab === "spots" ? spots : subTab === "tags" ? tags : tagContents;
+  const active = subTab === "spots" ? spots : tags;
   const config = HAPPY_TABLES[subTab];
 
   // Existing tags become the options for the spot's main_tag_id / tag_ids dropdowns.
@@ -65,23 +65,6 @@ export function HappySpotsSection({
     [tags.rows],
   );
 
-  // Same, for the spot_id picker on tag-content rows.
-  const spotOptions = useMemo(
-    () =>
-      spots.rows
-        .map((row) => {
-          const value = String(row.id ?? "").trim();
-          const label = String(row.name ?? row.slug ?? "").trim();
-          const language = String(row.language ?? "").trim();
-          return {
-            value,
-            label: `${label || value}${language ? ` · ${language}` : ""} (#${value})`,
-          };
-        })
-        .filter((option) => option.value),
-    [spots.rows],
-  );
-
   return (
     <>
       <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
@@ -92,7 +75,6 @@ export function HappySpotsSection({
         >
           <Tab label="Happy spot pages" value="spots" />
           <Tab label="Happy spot tag pages" value="tags" />
-          <Tab label="Spot content per tag" value="tagContents" />
         </Tabs>
       </Box>
 
@@ -130,16 +112,20 @@ export function HappySpotsSection({
                 main_tag_id: { options: tagOptions, multiple: false },
                 tag_ids: { options: tagOptions, multiple: true },
               }
-            : subTab === "tagContents"
-              ? {
-                  spot_id: { options: spotOptions, multiple: false },
-                  tag_id: { options: tagOptions, multiple: false },
-                }
-              : {}
+            : {}
         }
         onFieldChange={active.changeField}
         onSubmit={active.submit}
       />
+
+      {subTab === "spots" && (
+        <SpotTagContentPanel
+          isConnected={isConnected}
+          spots={spots}
+          tags={tags}
+          tagContents={tagContents}
+        />
+      )}
     </>
   );
 }
