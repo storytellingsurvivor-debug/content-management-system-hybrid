@@ -22,6 +22,7 @@ import {
   isLongTextField,
   TEMPLATE_LANGUAGE_OPTIONS,
 } from "@/lib/templateFormSchema";
+import { FaqField } from "@/components/FaqField";
 import {
   actionRowSx,
   contentGridSx,
@@ -76,6 +77,14 @@ const FIELD_GROUPS: FieldGroup[] = [
   {
     title: "Metadata",
     fields: ["metadata_title", "metadata_description"],
+  },
+  {
+    title: "Content",
+    fields: ["markdown_content"],
+  },
+  {
+    title: "FAQ",
+    fields: ["faq"],
   },
 ];
 
@@ -175,6 +184,17 @@ export function TemplateEditorSection({
             />
           }
           label={column.label}
+        />
+      );
+    }
+
+    if (column.uiType === "faq") {
+      return (
+        <FaqField
+          key={column.name}
+          label={column.label}
+          value={value}
+          onChange={(next) => onFieldChange(column.name, next)}
         />
       );
     }

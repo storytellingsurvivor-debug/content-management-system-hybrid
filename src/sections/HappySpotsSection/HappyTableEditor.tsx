@@ -20,6 +20,7 @@ import type {
   EditorMode,
   SubmitAction,
 } from "@/types/blog";
+import { FaqField } from "@/components/FaqField";
 import {
   fieldHelperText,
   type FieldGroup,
@@ -229,6 +230,17 @@ export function HappyTableEditor({
             />
           }
           label={column.label}
+        />
+      );
+    }
+
+    if (column.uiType === "faq") {
+      return (
+        <FaqField
+          key={column.name}
+          label={column.label}
+          value={value}
+          onChange={(next) => onFieldChange(column.name, next)}
         />
       );
     }

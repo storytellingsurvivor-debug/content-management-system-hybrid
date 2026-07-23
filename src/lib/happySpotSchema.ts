@@ -1,4 +1,4 @@
-import type { BlogColumnDefinition, BlogRow } from "@/types/blog";
+import { normalizeFaq, type BlogColumnDefinition, type BlogRow } from "@/types/blog";
 
 export const HAPPY_SPOT_TABLE = "happy_spot";
 export const HAPPY_SPOT_TAG_TABLE = "happy_spot_tag";
@@ -62,6 +62,8 @@ const TAG_COLUMNS: BlogColumnDefinition[] = [
   { name: "metadata_keywords", label: "Metadata Keywords", uiType: "text", required: false, readOnly: false },
   { name: "markdown_content", label: "Markdown Content", uiType: "markdown", required: false, readOnly: false },
   { name: "article_blog_slugs", label: "Article Blog Slugs", uiType: "stringArray", required: false, readOnly: false },
+  { name: "happy_wall_audience_slugs", label: "Happy Wall Audience Slugs", uiType: "stringArray", required: false, readOnly: false },
+  { name: "faq", label: "FAQ", uiType: "faq", required: false, readOnly: false },
 ];
 
 // What a spot displays, per tag. The main tag's row is the default view of the
@@ -77,6 +79,8 @@ const SPOT_TAG_CONTENT_COLUMNS: BlogColumnDefinition[] = [
   { name: "note", label: "Note", uiType: "text", required: false, readOnly: false },
   { name: "markdown_content", label: "Markdown Content", uiType: "markdown", required: false, readOnly: false },
   { name: "article_blog_slugs", label: "Article Blog Slugs", uiType: "stringArray", required: false, readOnly: false },
+  { name: "happy_wall_audience_slugs", label: "Happy Wall Audience Slugs", uiType: "stringArray", required: false, readOnly: false },
+  { name: "faq", label: "FAQ", uiType: "faq", required: false, readOnly: false },
 ];
 
 const SPOT_GROUPS: FieldGroup[] = [
@@ -93,11 +97,15 @@ const TAG_GROUPS: FieldGroup[] = [
   { title: "Appearance", fields: ["color", "emoji", "image_url", "title", "description"] },
   { title: "Map", fields: ["position", "max_zoom", "center_lat", "center_lng"] },
   { title: "Metadata", fields: ["metadata_title", "metadata_description", "metadata_keywords", "markdown_content", "article_blog_slugs"] },
+  { title: "Happy Wall net-linking", fields: ["happy_wall_audience_slugs"] },
+  { title: "FAQ", fields: ["faq"] },
 ];
 
 const SPOT_TAG_CONTENT_GROUPS: FieldGroup[] = [
   { title: "Link", fields: ["id", "created_at", "spot_id", "tag_id", "is_active", "position"] },
   { title: "Content", fields: ["image_url", "note", "markdown_content", "article_blog_slugs"] },
+  { title: "Happy Wall net-linking", fields: ["happy_wall_audience_slugs"] },
+  { title: "FAQ", fields: ["faq"] },
 ];
 
 export interface HappyTableConfig {
@@ -145,6 +153,9 @@ export function rowToForm(
     const value = row ? row[column.name] : undefined;
     if (column.uiType === "boolean") {
       form[column.name] = Boolean(value);
+    } else if (column.uiType === "faq") {
+      // Kept as a real array; the FaqField widget edits it directly.
+      form[column.name] = normalizeFaq(value) as never;
     } else if (column.uiType === "numberArray" || column.uiType === "stringArray") {
       form[column.name] = Array.isArray(value) ? value.join("\n") : "";
     } else if (column.uiType === "json") {
@@ -188,6 +199,12 @@ export function toHappyPayload(
 
     if (column.uiType === "boolean") {
       payload[column.name] = Boolean(raw);
+      continue;
+    }
+
+    if (column.uiType === "faq") {
+      // FaqField hands back an array; sanitise and store as jsonb.
+      payload[column.name] = normalizeFaq(raw);
       continue;
     }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Box, Container, Tab, Tabs, Typography } from "@mui/material";
+import { Alert, Box, Chip, Container, Tab, Tabs, Typography } from "@mui/material";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { ArticlesSection } from "@/sections/ArticlesSection/ArticlesSection";
 import { BucketSection } from "@/sections/BucketSection/BucketSection";
@@ -87,6 +87,11 @@ function createEmptyTemplateForm(columns: BlogColumnDefinition[]): BlogRow {
     }
     if (column.uiType === "boolean") {
       base[column.name] = false;
+      return;
+    }
+    if (column.uiType === "faq") {
+      // jsonb array column: empty must be [] so the insert doesn't send "".
+      base[column.name] = [];
       return;
     }
     base[column.name] = "";
@@ -843,17 +848,55 @@ export default function Home() {
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h4" sx={{ mb: 0.5 }}>
-          Milo CMS
-        </Typography>
-        <Typography color="text.secondary">
-          One workspace per brand — pick a brand, connect, and only the
-          content types that exist in that database show up.
-        </Typography>
-        <Typography color="text.secondary" variant="body2" sx={{ mt: 0.75 }}>
-          Connection status: {connectionView.status} ({connectionMeta})
-        </Typography>
+      <Box
+        sx={{
+          mb: 3,
+          p: { xs: 2.5, sm: 3 },
+          borderRadius: 3,
+          color: "common.white",
+          background:
+            "linear-gradient(120deg, #4F46E5 0%, #6366F1 45%, #EC4899 120%)",
+          boxShadow: "0 18px 40px -24px rgba(79,70,229,0.65)",
+          display: "flex",
+          alignItems: "center",
+          gap: 2,
+          flexWrap: "wrap",
+        }}
+      >
+        <Box
+          sx={{
+            width: 52,
+            height: 52,
+            borderRadius: 2.5,
+            display: "grid",
+            placeItems: "center",
+            fontSize: 28,
+            bgcolor: "rgba(255,255,255,0.18)",
+            backdropFilter: "blur(4px)",
+            flexShrink: 0,
+          }}
+        >
+          🎉
+        </Box>
+        <Box sx={{ flex: 1, minWidth: 220 }}>
+          <Typography variant="h4" sx={{ mb: 0.25 }}>
+            Milo CMS
+          </Typography>
+          <Typography sx={{ color: "rgba(255,255,255,0.85)" }}>
+            One workspace per brand — pick a brand, connect, and only the
+            content types in that database show up.
+          </Typography>
+        </Box>
+        <Chip
+          label={isConnected ? `Connected · ${connectionMeta}` : "Not connected"}
+          sx={{
+            fontWeight: 700,
+            color: isConnected ? "common.white" : "#4F46E5",
+            bgcolor: isConnected
+              ? "rgba(22,163,74,0.95)"
+              : "rgba(255,255,255,0.95)",
+          }}
+        />
       </Box>
 
       {feedbackMessage && (
