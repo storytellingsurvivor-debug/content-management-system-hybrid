@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Box, Chip, Container, Tab, Tabs, Typography } from "@mui/material";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { ArticlesSection } from "@/sections/ArticlesSection/ArticlesSection";
+import { VisitsSection } from "@/sections/VisitsSection/VisitsSection";
 import { BucketSection } from "@/sections/BucketSection/BucketSection";
 import { ConnectionSection } from "@/sections/ConnectionSection/ConnectionSection";
 import { ContentSection } from "@/sections/ContentSection/ContentSection";
@@ -46,7 +47,8 @@ type WorkspaceTab =
   | "templates"
   | "happy"
   | "happyDates"
-  | "happyWall";
+  | "happyWall"
+  | "visits";
 
 const TEMPLATE_DEFAULTS: Record<string, unknown> = {
   brand: "happy",
@@ -230,6 +232,9 @@ export default function Home() {
     happy: Boolean(features?.hasSpots),
     happyDates: Boolean(features?.hasDates),
     happyWall: Boolean(features?.wallTable),
+    // browsers table exists in every Milo DB; the section shows a graceful
+    // warning if a connected DB happens not to have it.
+    visits: true,
   };
   const safeTab: WorkspaceTab = tabAvailable[activeTab] ? activeTab : "blog";
   const hasAutoConnectedRef = useRef(false);
@@ -934,6 +939,7 @@ export default function Home() {
             <Tab label="Happy Dates" value="happyDates" />
           )}
           {features?.wallTable && <Tab label="Happy Wall" value="happyWall" />}
+          <Tab label="Visits" value="visits" />
         </Tabs>
       </Box>
 
@@ -1023,6 +1029,10 @@ export default function Home() {
           onFeedback={setFeedbackMessage}
           table={features.wallTable}
         />
+      )}
+
+      {safeTab === "visits" && (
+        <VisitsSection isConnected={isConnected} client={supabaseClient} />
       )}
 
       <BucketSection isConnected={isConnected} client={supabaseClient} />

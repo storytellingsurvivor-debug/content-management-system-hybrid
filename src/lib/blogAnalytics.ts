@@ -126,7 +126,10 @@ function toDayKey(value: string | null | undefined): string | null {
 
 // Build a dense daily series (no gaps) for the last `days` days so the bar
 // chart renders an even x-axis even when some days had zero readers.
-function perDaySeries(rows: BlogViewRow[], days = 30): DayBucket[] {
+function perDaySeries(
+  rows: { created_at?: string | null }[],
+  days = 30,
+): DayBucket[] {
   const counts = new Map<string, number>();
   for (const row of rows) {
     const key = toDayKey(row.created_at);
@@ -145,7 +148,10 @@ function perDaySeries(rows: BlogViewRow[], days = 30): DayBucket[] {
   return series;
 }
 
-function countSince(rows: BlogViewRow[], sinceMs: number): number {
+function countSince(
+  rows: { created_at?: string | null }[],
+  sinceMs: number,
+): number {
   return rows.reduce((sum, row) => {
     if (!row.created_at) return sum;
     const t = new Date(row.created_at).getTime();
@@ -228,4 +234,57 @@ export function computeAnalyticsByArticle(
 // The single most common label of a distribution, for the compact card view.
 export function topLabel(slices: DistributionSlice[]): string | null {
   return slices.length > 0 ? slices[0].label : null;
+}
+
+// ---------------------------------------------------------------------------
+// Site-wide visits — one browser row per visitor, no join to blog_views.
+// ---------------------------------------------------------------------------
+
+export interface VisitsAnalytics {
+  visitors: number; // total browser rows recorded
+  uniqueVisitors: number; // distinct browser_signature
+  last7Days: number;
+  last30Days: number;
+  lastVisitAt: string | null;
+  browsers: DistributionSlice[];
+  devices: DistributionSlice[];
+  os: DistributionSlice[];
+  sources: DistributionSlice[]; // host of url_source
+  landingUrls: DistributionSlice[]; // raw url_source
+  perDay: DayBucket[]; // new visitors per day, last 30 days
+}
+
+export function computeVisitsAnalytics(rows: BrowserRow[]): VisitsAnalytics {
+  const now = Date.now();
+  const day = 24 * 60 * 60 * 1000;
+
+  const signatures = new Set(
+    rows
+      .map((row) => normLabel(row.browser_signature, ""))
+      .filter((value) => value.length > 0),
+  );
+
+  const lastVisitAt = rows.reduce<string | null>((latest, row) => {
+    if (!row.created_at) return latest;
+    if (!latest) return row.created_at;
+    return new Date(row.created_at) > new Date(latest) ? row.created_at : latest;
+  }, null);
+
+  return {
+    visitors: rows.length,
+    uniqueVisitors: signatures.size,
+    last7Days: countSince(rows, now - 7 * day),
+    last30Days: countSince(rows, now - 30 * day),
+    lastVisitAt,
+    browsers: distribution(rows, (b) => parseUserAgent(b.user_agent).browser),
+    devices: distribution(rows, (b) =>
+      normLabel(b.device, parseUserAgent(b.user_agent).deviceType),
+    ),
+    os: distribution(rows, (b) => parseUserAgent(b.user_agent).os),
+    sources: distribution(rows, (b) =>
+      normLabel(urlHost(b.url_source), "Direct / none"),
+    ),
+    landingUrls: distribution(rows, (b) => normLabel(b.url_source, "—")),
+    perDay: perDaySeries(rows),
+  };
 }
