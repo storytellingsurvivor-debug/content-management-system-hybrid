@@ -15,6 +15,7 @@ const LONG_TEXT_FIELDS = new Set([
   "how_it_works_description",
   "metadata_description",
   "hero_bubble_message",
+  "markdown_content",
 ]);
 
 const TEMPLATE_OVERRIDES: Record<
@@ -25,6 +26,8 @@ const TEMPLATE_OVERRIDES: Record<
   created_at: { uiType: "datetime", readOnly: true },
   is_active: { uiType: "boolean", required: false },
   uploaded_image_url: { uiType: "url" },
+  markdown_content: { uiType: "markdown" },
+  faq: { uiType: "faq" },
   slug: { required: true },
   language: { required: true },
   brand: { required: true },
@@ -134,6 +137,20 @@ export const DEFAULT_TEMPLATE_COLUMNS: BlogColumnDefinition[] = [
     name: "metadata_description",
     label: "Metadata Description",
     uiType: "text",
+    required: false,
+    readOnly: false,
+  },
+  {
+    name: "markdown_content",
+    label: "Markdown Content",
+    uiType: "markdown",
+    required: false,
+    readOnly: false,
+  },
+  {
+    name: "faq",
+    label: "FAQ",
+    uiType: "faq",
     required: false,
     readOnly: false,
   },
