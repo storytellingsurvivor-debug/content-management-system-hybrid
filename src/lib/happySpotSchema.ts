@@ -83,21 +83,6 @@ const SPOT_TAG_CONTENT_COLUMNS: BlogColumnDefinition[] = [
   { name: "faq", label: "FAQ", uiType: "faq", required: false, readOnly: false },
 ];
 
-// What a spot displays, per tag. The main tag's row is the default view of the
-// page; the spot's other tags become blocks the visitor can switch to.
-const SPOT_TAG_CONTENT_COLUMNS: BlogColumnDefinition[] = [
-  { name: "id", label: "Id", uiType: "text", required: false, readOnly: true },
-  { name: "created_at", label: "Created Date", uiType: "datetime", required: false, readOnly: true },
-  { name: "spot_id", label: "Spot Id", uiType: "number", required: true, readOnly: false },
-  { name: "tag_id", label: "Tag Id", uiType: "number", required: true, readOnly: false },
-  { name: "is_active", label: "Is Active", uiType: "boolean", required: false, readOnly: false },
-  { name: "position", label: "Position (main tag is always shown first)", uiType: "number", required: false, readOnly: false },
-  { name: "image_url", label: "Image URL", uiType: "url", required: false, readOnly: false },
-  { name: "note", label: "Note", uiType: "text", required: false, readOnly: false },
-  { name: "markdown_content", label: "Markdown Content", uiType: "markdown", required: false, readOnly: false },
-  { name: "article_blog_slugs", label: "Article Blog Slugs", uiType: "stringArray", required: false, readOnly: false },
-];
-
 const SPOT_GROUPS: FieldGroup[] = [
   { title: "Identity", fields: ["id", "created_at", "slug", "language", "name", "is_active"] },
   { title: "Location", fields: ["address", "city", "lat", "lng"] },
@@ -121,11 +106,6 @@ const SPOT_TAG_CONTENT_GROUPS: FieldGroup[] = [
   { title: "Content", fields: ["image_url", "note", "markdown_content", "article_blog_slugs"] },
   { title: "Happy Wall net-linking", fields: ["happy_wall_audience_slugs"] },
   { title: "FAQ", fields: ["faq"] },
-];
-
-const SPOT_TAG_CONTENT_GROUPS: FieldGroup[] = [
-  { title: "Link", fields: ["id", "created_at", "spot_id", "tag_id", "is_active", "position"] },
-  { title: "Content", fields: ["image_url", "note", "markdown_content", "article_blog_slugs"] },
 ];
 
 export interface HappyTableConfig {

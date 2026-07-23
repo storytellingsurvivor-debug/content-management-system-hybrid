@@ -32,7 +32,7 @@ function formatDate(iso: string | null): string {
   return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString();
 }
 
-function BarList({
+export function BarList({
   title,
   slices,
 }: {
@@ -85,7 +85,13 @@ function BarList({
   );
 }
 
-function KpiTile({ label, value }: { label: string; value: string | number }) {
+export function KpiTile({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
   return (
     <Paper variant="outlined" sx={kpiTileSx}>
       <Typography variant="h5" component="div">
