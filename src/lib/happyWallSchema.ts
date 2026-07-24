@@ -136,6 +136,14 @@ export function detectBackgroundFields(
   };
 }
 
+// Every column that holds an image URL — background artwork plus any uploaded
+// image (cover, logo, avatar, hero…). Used to render thumbnails in the preview.
+export function detectImageFields(columns: BlogColumnDefinition[]): string[] {
+  return columns
+    .filter((c) => c.uiType === "url" && IMAGE_NAME.test(c.name))
+    .map((c) => c.name);
+}
+
 // ---------------------------------------------------------------------------
 // Messages
 // ---------------------------------------------------------------------------

@@ -16,6 +16,7 @@ import type { BlogColumnDefinition } from "@/types/blog";
 import type { EnvironmentLabel } from "@/types/connection";
 import {
   detectBackgroundFields,
+  detectImageFields,
   inferWallColumns,
 } from "@/lib/happyWallSchema";
 import {
@@ -176,6 +177,19 @@ export function WallManagerPanel({
   const mobileUrl = mobileField ? str(wall.form[mobileField]) : "";
   const desktopUrl = desktopField ? str(wall.form[desktopField]) : "";
 
+  // Any other uploaded image on the wall (cover, logo, hero…) — everything that
+  // isn't already shown in the mobile/desktop background frames.
+  const galleryImages = useMemo(() => {
+    const usedForBackground = new Set(
+      [mobileField, desktopField].filter((name): name is string => Boolean(name)),
+    );
+    return detectImageFields(wall.columns)
+      .filter((name) => !usedForBackground.has(name))
+      .map((name) => ({ name, url: str(wall.form[name]) }));
+  }, [wall.columns, wall.form, mobileField, desktopField]);
+
+  const hasSelection = Boolean(wall.selectedId);
+
   return (
     <Paper elevation={2} sx={sectionPaperSx}>
       <Typography variant="h6" sx={{ mb: 1 }}>
@@ -223,11 +237,14 @@ export function WallManagerPanel({
             <Button variant="outlined" onClick={() => wall.load()} disabled={wall.loading}>
               {wall.loading ? "Refreshing…" : "Refresh"}
             </Button>
-            <Button variant="contained" onClick={wall.createNew}>
-              Create new
-            </Button>
           </Box>
 
+          {!hasSelection ? (
+            <Alert severity="info">
+              Select a wall above to edit its content and preview its artwork.
+            </Alert>
+          ) : (
+          <>
           <Box sx={contentGridSx}>
             <Box sx={editorColumnSx}>
               {groups.map((group) => (
@@ -259,11 +276,12 @@ export function WallManagerPanel({
                 desktopUrl={desktopUrl}
                 mobileField={mobileField}
                 desktopField={desktopField}
+                extraImages={galleryImages}
               />
-              {background.all.length === 0 && (
+              {background.all.length === 0 && galleryImages.length === 0 && (
                 <Alert severity="info" sx={{ mt: 2 }}>
-                  No background-image column detected on `{table}`. Add a
-                  background URL column (e.g. `background_image_url_mobile` /
+                  No image column detected on `{table}`. Add a background/image
+                  URL column (e.g. `background_image_url_mobile` /
                   `background_image_url_desktop`) to preview artwork here.
                 </Alert>
               )}
@@ -281,21 +299,21 @@ export function WallManagerPanel({
             <Button
               variant="contained"
               disabled={wall.submitting}
-              onClick={() =>
-                wall.submit(wall.mode === "create" ? "create" : "update")
-              }
+              onClick={() => wall.submit("update")}
             >
-              {wall.mode === "create" ? "Create wall" : "Update wall"}
+              {wall.submitting ? "Saving…" : "Update wall"}
             </Button>
             <Button
               variant="outlined"
               color="error"
-              disabled={wall.submitting || wall.mode !== "edit"}
+              disabled={wall.submitting}
               onClick={() => wall.submit("delete")}
             >
               Delete wall
             </Button>
           </Box>
+          </>
+          )}
         </>
       )}
     </Paper>

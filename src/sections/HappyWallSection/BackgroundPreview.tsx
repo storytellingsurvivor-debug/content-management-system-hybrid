@@ -135,12 +135,59 @@ function DeviceFrame({ variant, imageUrl, title, fieldName }: DeviceFrameProps) 
   );
 }
 
+export interface PreviewImage {
+  name: string;
+  url: string;
+}
+
 interface BackgroundPreviewProps {
   title: string;
   mobileUrl: string;
   desktopUrl: string;
   mobileField: string | null;
   desktopField: string | null;
+  // Other image columns on the wall (uploaded cover/logo/hero…), shown as
+  // labelled thumbnails below the device frames.
+  extraImages?: PreviewImage[];
+}
+
+function ImageThumb({ name, url }: PreviewImage) {
+  const valid = isHttpUrl(url);
+  return (
+    <Box sx={{ width: 140, textAlign: "center" }}>
+      <Box
+        sx={{
+          width: "100%",
+          aspectRatio: "4 / 3",
+          borderRadius: 1.5,
+          overflow: "hidden",
+          border: (theme) => `1px solid ${theme.palette.divider}`,
+          bgcolor: "action.hover",
+          display: "grid",
+          placeItems: "center",
+        }}
+      >
+        {valid ? (
+          <Box
+            component="img"
+            src={url}
+            alt={name}
+            sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+          />
+        ) : (
+          <Typography variant="caption" color="text.secondary">
+            No image
+          </Typography>
+        )}
+      </Box>
+      <Chip
+        size="small"
+        label={name}
+        variant="outlined"
+        sx={{ mt: 0.5, maxWidth: "100%" }}
+      />
+    </Box>
+  );
 }
 
 export function BackgroundPreview({
@@ -149,29 +196,57 @@ export function BackgroundPreview({
   desktopUrl,
   mobileField,
   desktopField,
+  extraImages = [],
 }: BackgroundPreviewProps) {
   return (
-    <Box
-      sx={{
-        display: "flex",
-        gap: 3,
-        flexWrap: "wrap",
-        alignItems: "flex-start",
-        justifyContent: "center",
-      }}
-    >
-      <DeviceFrame
-        variant="mobile"
-        imageUrl={mobileUrl}
-        title={title}
-        fieldName={mobileField}
-      />
-      <DeviceFrame
-        variant="desktop"
-        imageUrl={desktopUrl}
-        title={title}
-        fieldName={desktopField}
-      />
-    </Box>
+    <>
+      <Box
+        sx={{
+          display: "flex",
+          gap: 3,
+          flexWrap: "wrap",
+          alignItems: "flex-start",
+          justifyContent: "center",
+        }}
+      >
+        <DeviceFrame
+          variant="mobile"
+          imageUrl={mobileUrl}
+          title={title}
+          fieldName={mobileField}
+        />
+        <DeviceFrame
+          variant="desktop"
+          imageUrl={desktopUrl}
+          title={title}
+          fieldName={desktopField}
+        />
+      </Box>
+
+      {extraImages.length > 0 && (
+        <Box sx={{ mt: 2 }}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ fontWeight: 600 }}
+          >
+            Uploaded images
+          </Typography>
+          <Box
+            sx={{
+              display: "flex",
+              gap: 1.5,
+              flexWrap: "wrap",
+              mt: 0.75,
+              justifyContent: "center",
+            }}
+          >
+            {extraImages.map((image) => (
+              <ImageThumb key={image.name} name={image.name} url={image.url} />
+            ))}
+          </Box>
+        </Box>
+      )}
+    </>
   );
 }
