@@ -136,6 +136,41 @@ export function detectBackgroundFields(
   };
 }
 
+// The wall's language column, used to filter walls by language.
+export function detectLanguageField(
+  columns: BlogColumnDefinition[],
+): string | null {
+  for (const name of ["language", "lang", "locale"]) {
+    if (columns.some((c) => c.name === name)) return name;
+  }
+  return null;
+}
+
+// The boolean column that marks a wall as public / visible, used to filter and
+// to default the list to public walls only.
+export function detectPublicField(
+  columns: BlogColumnDefinition[],
+): string | null {
+  const priority = [
+    "is_public",
+    "public",
+    "is_published",
+    "published",
+    "is_visible",
+    "visible",
+    "is_active",
+    "is_live",
+  ];
+  for (const name of priority) {
+    const col = columns.find((c) => c.name === name);
+    if (col && col.uiType === "boolean") return name;
+  }
+  const anyPublic = columns.find(
+    (c) => c.uiType === "boolean" && /(public|publi|visible)/i.test(c.name),
+  );
+  return anyPublic?.name ?? null;
+}
+
 // Every column that holds an image URL — background artwork plus any uploaded
 // image (cover, logo, avatar, hero…). Used to render thumbnails in the preview.
 export function detectImageFields(columns: BlogColumnDefinition[]): string[] {

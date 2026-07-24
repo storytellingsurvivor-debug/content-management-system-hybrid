@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -9,14 +9,17 @@ import {
   MenuItem,
   Paper,
   Select,
+  TextField,
   Typography,
 } from "@mui/material";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { BlogColumnDefinition } from "@/types/blog";
+import type { BlogColumnDefinition, BlogRow } from "@/types/blog";
 import type { EnvironmentLabel } from "@/types/connection";
 import {
   detectBackgroundFields,
   detectImageFields,
+  detectLanguageField,
+  detectPublicField,
   inferWallColumns,
 } from "@/lib/happyWallSchema";
 import {
@@ -153,19 +156,73 @@ export function WallManagerPanel({
     [wall.columns, background.all],
   );
 
-  const wallOptions = useMemo(
-    () =>
-      wall.rows.map((row) => {
-        const id = String(row.id ?? "").trim();
-        const label =
-          str(row.title_or_description) ||
-          str(row.name) ||
-          str(row.slug) ||
-          `wall #${id}`;
-        return { value: id ? `id:${id}` : "", label: `${label} (#${id})` };
-      }),
-    [wall.rows],
+  // --- Filters: by language and by public flag (defaults to public only) ---
+  const languageField = useMemo(
+    () => detectLanguageField(wall.columns),
+    [wall.columns],
   );
+  const publicField = useMemo(
+    () => detectPublicField(wall.columns),
+    [wall.columns],
+  );
+  const [languageFilter, setLanguageFilter] = useState("");
+  const [publicFilter, setPublicFilter] = useState<"public" | "private" | "all">(
+    "public",
+  );
+
+  const distinctLanguages = useMemo(() => {
+    if (!languageField) return [];
+    return Array.from(
+      new Set(
+        wall.rows.map((row) => str(row[languageField])).filter(Boolean),
+      ),
+    ).sort((a, b) => a.localeCompare(b));
+  }, [wall.rows, languageField]);
+
+  const filteredRows = useMemo(
+    () =>
+      wall.rows.filter((row) => {
+        if (
+          languageField &&
+          languageFilter &&
+          str(row[languageField]) !== languageFilter
+        ) {
+          return false;
+        }
+        if (publicField && publicFilter !== "all") {
+          const isPublic = row[publicField] === true;
+          if (publicFilter === "public" && !isPublic) return false;
+          if (publicFilter === "private" && isPublic) return false;
+        }
+        return true;
+      }),
+    [wall.rows, languageField, languageFilter, publicField, publicFilter],
+  );
+
+  const wallOptions = useMemo(() => {
+    const toOption = (row: BlogRow) => {
+      const id = String(row.id ?? "").trim();
+      const label =
+        str(row.title_or_description) ||
+        str(row.name) ||
+        str(row.slug) ||
+        `wall #${id}`;
+      return { value: id ? `id:${id}` : "", label: `${label} (#${id})` };
+    };
+    const options = filteredRows.map(toOption);
+    // Keep the current selection listed even if the filters would hide it, so
+    // the dropdown value stays valid after filtering.
+    if (
+      wall.selectedId &&
+      !options.some((option) => option.value === wall.selectedId)
+    ) {
+      const selectedRow = wall.rows.find(
+        (row) => `id:${String(row.id ?? "").trim()}` === wall.selectedId,
+      );
+      if (selectedRow) options.unshift(toOption(selectedRow));
+    }
+    return options;
+  }, [filteredRows, wall.rows, wall.selectedId]);
 
   const title =
     str(wall.form.title_or_description) ||
@@ -210,6 +267,61 @@ export function WallManagerPanel({
         <Alert severity="info">Connect to Supabase first.</Alert>
       ) : (
         <>
+          {(languageField || publicField) && (
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: { xs: "column", sm: "row" },
+                gap: 1.5,
+                mb: 1.5,
+              }}
+            >
+              {languageField && (
+                <TextField
+                  select
+                  size="small"
+                  label="Language"
+                  value={languageFilter}
+                  onChange={(event) => setLanguageFilter(event.target.value)}
+                  sx={{ minWidth: 180 }}
+                  disabled={distinctLanguages.length === 0}
+                >
+                  <MenuItem value="">All languages</MenuItem>
+                  {distinctLanguages.map((language) => (
+                    <MenuItem key={language} value={language}>
+                      {language.toUpperCase()}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+              {publicField && (
+                <TextField
+                  select
+                  size="small"
+                  label="Visibility"
+                  value={publicFilter}
+                  onChange={(event) =>
+                    setPublicFilter(
+                      event.target.value as "public" | "private" | "all",
+                    )
+                  }
+                  helperText={`based on \`${publicField}\``}
+                  sx={{ minWidth: 180 }}
+                >
+                  <MenuItem value="public">Public only</MenuItem>
+                  <MenuItem value="private">Private only</MenuItem>
+                  <MenuItem value="all">All</MenuItem>
+                </TextField>
+              )}
+              <Box sx={{ flex: 1 }} />
+              <Box sx={{ alignSelf: "center" }}>
+                <Typography variant="caption" color="text.secondary">
+                  {filteredRows.length}/{wall.rows.length} wall(s)
+                </Typography>
+              </Box>
+            </Box>
+          )}
+
           <Box
             sx={{
               display: "flex",
