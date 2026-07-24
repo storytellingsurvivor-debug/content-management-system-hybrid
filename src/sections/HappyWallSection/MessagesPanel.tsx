@@ -139,15 +139,6 @@ export function MessagesPanel({
   const textField = useMemo(() => detectMessageTextField(columns), [columns]);
   const authorField = useMemo(() => detectMessageAuthorField(columns), [columns]);
 
-  // Pre-link a newly created message to the selected wall.
-  const createNew = useCallback(() => {
-    messages.createNew();
-    if (fkField && fkValue !== null) {
-      messages.changeField(fkField, fkValue);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages.createNew, messages.changeField, fkField, fkValue]);
-
   if (!isConnected) {
     return (
       <Paper elevation={2} sx={sectionPaperSx}>
@@ -282,9 +273,6 @@ export function MessagesPanel({
             >
               {messages.loading ? "Refreshing…" : "Refresh"}
             </Button>
-            <Button size="small" variant="contained" onClick={createNew}>
-              New message
-            </Button>
           </Box>
 
           <Box
@@ -330,47 +318,51 @@ export function MessagesPanel({
               })}
             </Stack>
 
-            {/* Editor */}
+            {/* Editor — only for an existing, selected message. */}
             <Box sx={groupSx}>
-              <Typography sx={groupHeaderSx}>
-                {messages.mode === "create" ? "New message" : "Edit message"}
-              </Typography>
-              {messageColumns.map((column) => (
-                <AdaptiveField
-                  key={column.name}
-                  column={column}
-                  value={messages.form[column.name]}
-                  multiline={isMultilineMessageField(column)}
-                  onChange={(value) => messages.changeField(column.name, value)}
-                />
-              ))}
+              <Typography sx={groupHeaderSx}>Edit message</Typography>
+              {messages.mode !== "edit" ? (
+                <Alert severity="info">
+                  Select a message on the left to edit or delete it.
+                </Alert>
+              ) : (
+                <>
+                  {messageColumns.map((column) => (
+                    <AdaptiveField
+                      key={column.name}
+                      column={column}
+                      value={messages.form[column.name]}
+                      multiline={isMultilineMessageField(column)}
+                      onChange={(value) =>
+                        messages.changeField(column.name, value)
+                      }
+                    />
+                  ))}
 
-              {messages.error && (
-                <Alert severity="error">{messages.error}</Alert>
+                  {messages.error && (
+                    <Alert severity="error">{messages.error}</Alert>
+                  )}
+
+                  <Divider />
+                  <Box sx={actionRowSx}>
+                    <Button
+                      variant="contained"
+                      disabled={messages.submitting}
+                      onClick={() => messages.submit("update")}
+                    >
+                      {messages.submitting ? "Saving…" : "Update"}
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      disabled={messages.submitting}
+                      onClick={() => messages.submit("delete")}
+                    >
+                      Delete
+                    </Button>
+                  </Box>
+                </>
               )}
-
-              <Divider />
-              <Box sx={actionRowSx}>
-                <Button
-                  variant="contained"
-                  disabled={messages.submitting}
-                  onClick={() =>
-                    messages.submit(
-                      messages.mode === "create" ? "create" : "update",
-                    )
-                  }
-                >
-                  {messages.mode === "create" ? "Create" : "Update"}
-                </Button>
-                <Button
-                  variant="outlined"
-                  color="error"
-                  disabled={messages.submitting || messages.mode !== "edit"}
-                  onClick={() => messages.submit("delete")}
-                >
-                  Delete
-                </Button>
-              </Box>
             </Box>
           </Box>
         </>

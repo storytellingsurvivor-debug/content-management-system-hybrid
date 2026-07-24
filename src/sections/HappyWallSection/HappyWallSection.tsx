@@ -18,7 +18,7 @@ interface HappyWallSectionProps {
   table: string;
 }
 
-type WallSubTab = "walls" | "messages" | "choreography";
+type WallSubTab = "walls" | "choreography";
 
 export function HappyWallSection({
   isConnected,
@@ -56,7 +56,6 @@ export function HappyWallSection({
           aria-label="Happy wall sub tabs"
         >
           <Tab label="Walls" value="walls" />
-          <Tab label="Messages" value="messages" />
           <Tab label="Bubbles choreography" value="choreography" />
         </Tabs>
       </Box>
@@ -71,19 +70,18 @@ export function HappyWallSection({
           onSelectWall={setSelectedWall}
           onFeedback={onFeedback}
         />
+        <Box sx={{ mt: 3 }}>
+          <MessagesPanel
+            isConnected={isConnected}
+            client={client}
+            environment={environment}
+            wallTable={table}
+            detectedMessageTable={messageTable}
+            selectedWall={selectedWall}
+            onFeedback={onFeedback}
+          />
+        </Box>
       </Box>
-
-      {subTab === "messages" && (
-        <MessagesPanel
-          isConnected={isConnected}
-          client={client}
-          environment={environment}
-          wallTable={table}
-          detectedMessageTable={messageTable}
-          selectedWall={selectedWall}
-          onFeedback={onFeedback}
-        />
-      )}
 
       {subTab === "choreography" && (
         <BubblesChoreographyPanel
