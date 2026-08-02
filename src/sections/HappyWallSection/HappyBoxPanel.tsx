@@ -321,9 +321,10 @@ export function HappyBoxPanel({
                   const name = authorField ? str(row[authorField]) : "";
                   const message = textField ? str(row[textField]) : "";
 
-                  // Left = the writer's avatar: emoji first, else their image.
+                  // Left = the writer's avatar: their image_src wins; the emoji
+                  // (then 💛) is only a fallback when there is no image.
                   const avatarUrl = avatarField ? str(row[avatarField]) : "";
-                  const showAvatarImage = !emoji && isHttpUrl(avatarUrl);
+                  const showAvatarImage = isHttpUrl(avatarUrl);
 
                   // Right = the media content attached to the message (never the
                   // writer's avatar image).
