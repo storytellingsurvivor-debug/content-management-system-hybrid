@@ -7,14 +7,12 @@ import {
   Button,
   Chip,
   FormControlLabel,
-  GlobalStyles,
   MenuItem,
   Paper,
   Switch,
   TextField,
   Typography,
 } from "@mui/material";
-import PrintRounded from "@mui/icons-material/PrintRounded";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { BlogColumnDefinition, BlogRow } from "@/types/blog";
 import type { EnvironmentLabel } from "@/types/connection";
@@ -41,15 +39,14 @@ interface HappyBoxPanelProps {
 }
 
 // Fallback icon so every card carries a friendly mark even when a message has
-// neither an emoji nor an image of its own.
+// neither an emoji nor any media of its own.
 const FALLBACK_EMOJI = "💛";
 
-// Card sizes tune both the tile footprint and how big the emoji/text read on
-// paper — "Large" prints ~6 to a page, "Small" packs many more.
+// Card sizes tune the media footprint and the name/text type scale.
 const CARD_SIZES = {
-  small: { minWidth: 150, emoji: 40, image: 84, name: 12, message: 12 },
-  medium: { minWidth: 200, emoji: 56, image: 120, name: 14, message: 14 },
-  large: { minWidth: 260, emoji: 76, image: 168, name: 16, message: 16 },
+  small: { media: 64, name: 12, message: 12 },
+  medium: { media: 96, name: 14, message: 14 },
+  large: { media: 128, name: 16, message: 15 },
 } as const;
 
 type CardSize = keyof typeof CARD_SIZES;
@@ -69,33 +66,17 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
-// Print rules: hide the whole app while printing and reveal only the grid, so a
-// browser "Save as PDF" produces clean pages of cut-out cards.
-const printStyles = (
-  <GlobalStyles
-    styles={{
-      "@media print": {
-        "body *": { visibility: "hidden" },
-        ".happy-box-print-area, .happy-box-print-area *": {
-          visibility: "visible",
-        },
-        ".happy-box-print-area": {
-          position: "absolute",
-          left: 0,
-          top: 0,
-          width: "100%",
-        },
-        ".happy-box-no-print": { display: "none !important" },
-        ".happy-box-card": {
-          breakInside: "avoid",
-          pageBreakInside: "avoid",
-          boxShadow: "none",
-        },
-        "@page": { margin: "12mm" },
-      },
-    }}
-  />
-);
+// A media item is a video when its type hint says so, or its URL ends in a
+// known video extension — otherwise it renders as an image.
+function isVideoMedia(url: string, typeHint: string): boolean {
+  if (/video/i.test(typeHint)) return true;
+  return /\.(mp4|webm|ogg|mov|m4v)(\?|#|$)/i.test(url);
+}
+
+interface MediaItem {
+  url: string;
+  isVideo: boolean;
+}
 
 export function HappyBoxPanel({
   isConnected,
@@ -106,15 +87,14 @@ export function HappyBoxPanel({
   selectedWall,
   onFeedback,
 }: HappyBoxPanelProps) {
-  const [columnsPerRow, setColumnsPerRow] = useState(3);
-  const [cardSize, setCardSize] = useState<CardSize>("medium");
+  const [columnsPerRow, setColumnsPerRow] = useState(6);
+  const [cardSize, setCardSize] = useState<CardSize>("large");
   const [showMessage, setShowMessage] = useState(true);
   const [showName, setShowName] = useState(true);
-  const [cutGuides, setCutGuides] = useState(true);
 
   const table = (detectedMessageTable ?? "").trim();
 
-  // Probe the message table's real schema once so emoji/image/author columns are
+  // Probe the message table's real schema once so emoji/media/author columns are
   // known even before any row is inspected.
   const [probeColumns, setProbeColumns] = useState<BlogColumnDefinition[] | null>(
     null,
@@ -181,6 +161,36 @@ export function HappyBoxPanel({
   const authorField = useMemo(() => detectMessageAuthorField(columns), [columns]);
   const emojiField = useMemo(() => detectMessageEmojiField(columns), [columns]);
   const imageField = useMemo(() => detectMessageImageField(columns), [columns]);
+  // Gift media lives on its own url/type pair on happy_wall_message — shown
+  // alongside the primary media when a message carries both.
+  const giftUrlField = useMemo(
+    () => (columns.some((c) => c.name === "gift_media_url") ? "gift_media_url" : null),
+    [columns],
+  );
+  const giftTypeField = useMemo(
+    () =>
+      columns.some((c) => c.name === "gift_media_type") ? "gift_media_type" : null,
+    [columns],
+  );
+
+  // Every filled image/video on a message, de-duplicated, in display order.
+  const mediaItemsFor = useCallback(
+    (row: BlogRow): MediaItem[] => {
+      const items: MediaItem[] = [];
+      const seen = new Set<string>();
+      const push = (url: string, typeHint: string) => {
+        if (!isHttpUrl(url) || seen.has(url)) return;
+        seen.add(url);
+        items.push({ url, isVideo: isVideoMedia(url, typeHint) });
+      };
+      if (imageField) push(str(row[imageField]), "");
+      if (giftUrlField) {
+        push(str(row[giftUrlField]), giftTypeField ? str(row[giftTypeField]) : "");
+      }
+      return items;
+    },
+    [imageField, giftUrlField, giftTypeField],
+  );
 
   const size = CARD_SIZES[cardSize];
 
@@ -209,58 +219,36 @@ export function HappyBoxPanel({
 
   return (
     <Paper elevation={2} sx={sectionPaperSx}>
-      {printStyles}
-
-      <Box
-        className="happy-box-no-print"
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexWrap: "wrap",
-          gap: 1,
-          mb: 1,
-        }}
-      >
-        <Box>
-          <Typography variant="h6">Happy Box — printable grid</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Every message of the selected wall as a card you can print, drop into
-            a PDF or Canva, then cut &amp; glue to build the Happy Box.
-          </Typography>
-        </Box>
-        <Button
-          variant="contained"
-          startIcon={<PrintRounded />}
-          onClick={() => window.print()}
-          disabled={messages.rows.length === 0}
-        >
-          Print / Save as PDF
-        </Button>
+      <Box sx={{ mb: 1 }}>
+        <Typography variant="h6">Happy Box — message grid</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Every message of the selected wall as a card — media and name on the
+          left, the message on the right — ready to drop into a PDF or Canva and
+          build the Happy Box.
+        </Typography>
       </Box>
 
       {messages.unavailable && (
-        <Alert severity="warning" className="happy-box-no-print" sx={{ mb: 2 }}>
+        <Alert severity="warning" sx={{ mb: 2 }}>
           {messages.unavailable}
         </Alert>
       )}
 
       {!selectedWall ? (
-        <Alert severity="info" className="happy-box-no-print">
+        <Alert severity="info">
           Select a wall in the <strong>Walls</strong> tab to lay out its messages
-          as a printable grid.
+          as a grid.
         </Alert>
       ) : !fkField ? (
-        <Alert severity="warning" className="happy-box-no-print">
+        <Alert severity="warning">
           Could not detect the column linking messages to a wall on `{table}`.
           Load the wall&apos;s messages under the <strong>Walls</strong> tab
           first.
         </Alert>
       ) : (
         <>
-          {/* Layout controls — hidden from the printout. */}
+          {/* Layout controls */}
           <Box
-            className="happy-box-no-print"
             sx={{
               display: "flex",
               alignItems: "center",
@@ -330,23 +318,14 @@ export function HappyBoxPanel({
               }
               label="Message"
             />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={cutGuides}
-                  onChange={(event) => setCutGuides(event.target.checked)}
-                />
-              }
-              label="Cut guides"
-            />
           </Box>
 
           {messages.rows.length === 0 && !messages.loading ? (
-            <Alert severity="info" className="happy-box-no-print">
+            <Alert severity="info">
               No messages on this wall yet — nothing to lay out.
             </Alert>
           ) : (
-            <Box className="happy-box-print-area">
+            <Box>
               <Typography
                 variant="h6"
                 sx={{ mb: 2, textAlign: "center", fontWeight: 700 }}
@@ -357,87 +336,110 @@ export function HappyBoxPanel({
               <Box
                 sx={{
                   display: "grid",
-                  gap: cutGuides ? 1.5 : 2,
+                  gap: 2,
                   gridTemplateColumns: {
-                    xs: "repeat(2, minmax(0, 1fr))",
-                    sm: `repeat(${columnsPerRow}, minmax(0, 1fr))`,
+                    xs: "1fr",
+                    sm: "repeat(2, minmax(0, 1fr))",
+                    md: `repeat(${columnsPerRow}, minmax(0, 1fr))`,
                   },
                 }}
               >
                 {messages.rows.map((row) => {
                   const id = str(row.id);
                   const emoji = emojiField ? str(row[emojiField]) : "";
-                  const imageUrl = imageField ? str(row[imageField]) : "";
-                  const hasImage = isHttpUrl(imageUrl);
                   const name = authorField ? str(row[authorField]) : "";
                   const message = textField ? str(row[textField]) : "";
+                  const media = mediaItemsFor(row);
 
                   return (
                     <Box
                       key={id || Math.random()}
-                      className="happy-box-card"
                       sx={{
                         display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        textAlign: "center",
-                        gap: 1,
+                        alignItems: "flex-start",
+                        gap: 1.5,
                         p: 1.5,
-                        minHeight: size.minWidth,
                         borderRadius: 2,
-                        border: (theme) =>
-                          cutGuides
-                            ? `1px dashed ${theme.palette.text.disabled}`
-                            : `1px solid ${theme.palette.divider}`,
+                        border: (theme) => `1px solid ${theme.palette.divider}`,
                         bgcolor: "background.paper",
-                        justifyContent: "center",
                       }}
                     >
-                      {hasImage ? (
-                        <Box
-                          component="img"
-                          src={imageUrl}
-                          alt={name || "Happy message"}
-                          sx={{
-                            width: size.image,
-                            height: size.image,
-                            objectFit: "cover",
-                            borderRadius: 2,
-                          }}
-                        />
-                      ) : (
-                        <Box
-                          sx={{
-                            fontSize: size.emoji,
-                            lineHeight: 1,
-                          }}
-                        >
-                          {emoji || FALLBACK_EMOJI}
-                        </Box>
-                      )}
+                      {/* Left column: media (or emoji) with the name beneath it. */}
+                      <Box
+                        sx={{
+                          flexShrink: 0,
+                          width: size.media,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          gap: 0.75,
+                        }}
+                      >
+                        {media.length > 0 ? (
+                          media.map((item) =>
+                            item.isVideo ? (
+                              <Box
+                                key={item.url}
+                                component="video"
+                                src={item.url}
+                                controls
+                                preload="metadata"
+                                sx={{
+                                  width: "100%",
+                                  aspectRatio: "1",
+                                  objectFit: "cover",
+                                  borderRadius: 2,
+                                  bgcolor: "common.black",
+                                }}
+                              />
+                            ) : (
+                              <Box
+                                key={item.url}
+                                component="img"
+                                src={item.url}
+                                alt={name || "Happy message"}
+                                sx={{
+                                  width: "100%",
+                                  aspectRatio: "1",
+                                  objectFit: "cover",
+                                  borderRadius: 2,
+                                }}
+                              />
+                            ),
+                          )
+                        ) : (
+                          <Box sx={{ fontSize: size.media * 0.6, lineHeight: 1 }}>
+                            {emoji || FALLBACK_EMOJI}
+                          </Box>
+                        )}
 
+                        {showName && name && (
+                          <Typography
+                            sx={{
+                              fontSize: size.name,
+                              fontWeight: 700,
+                              color: "text.secondary",
+                              textAlign: "center",
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            {name}
+                          </Typography>
+                        )}
+                      </Box>
+
+                      {/* Right column: the message text. */}
                       {showMessage && message && (
                         <Typography
                           sx={{
+                            flex: 1,
                             fontSize: size.message,
                             whiteSpace: "pre-wrap",
-                            fontStyle: "italic",
+                            wordBreak: "break-word",
                             color: "text.primary",
                           }}
                         >
-                          “{message}”
-                        </Typography>
-                      )}
-
-                      {showName && name && (
-                        <Typography
-                          sx={{
-                            fontSize: size.name,
-                            fontWeight: 700,
-                            color: "text.secondary",
-                          }}
-                        >
-                          — {name}
+                          {message}
                         </Typography>
                       )}
                     </Box>
