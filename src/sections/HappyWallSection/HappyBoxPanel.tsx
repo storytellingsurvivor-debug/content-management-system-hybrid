@@ -18,8 +18,9 @@ import type { BlogColumnDefinition, BlogRow } from "@/types/blog";
 import type { EnvironmentLabel } from "@/types/connection";
 import {
   detectMessageAuthorField,
+  detectMessageAvatarField,
   detectMessageEmojiField,
-  detectMessageImageField,
+  detectMessageMediaField,
   detectMessageTextField,
   detectMessageWallFk,
   inferMessageColumns,
@@ -67,16 +68,11 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
-// A media item is a video when its type hint says so, or its URL ends in a
-// known video extension — otherwise it renders as an image.
+// Media is a video when its type hint says so, or its URL ends in a known video
+// extension — otherwise it renders as an image.
 function isVideoMedia(url: string, typeHint: string): boolean {
   if (/video/i.test(typeHint)) return true;
   return /\.(mp4|webm|ogg|mov|m4v)(\?|#|$)/i.test(url);
-}
-
-interface MediaItem {
-  url: string;
-  isVideo: boolean;
 }
 
 export function HappyBoxPanel({
@@ -161,37 +157,10 @@ export function HappyBoxPanel({
   const textField = useMemo(() => detectMessageTextField(columns), [columns]);
   const authorField = useMemo(() => detectMessageAuthorField(columns), [columns]);
   const emojiField = useMemo(() => detectMessageEmojiField(columns), [columns]);
-  const imageField = useMemo(() => detectMessageImageField(columns), [columns]);
-  // Gift media lives on its own url/type pair on happy_wall_message — shown
-  // alongside the primary media when a message carries both.
-  const giftUrlField = useMemo(
-    () => (columns.some((c) => c.name === "gift_media_url") ? "gift_media_url" : null),
-    [columns],
-  );
-  const giftTypeField = useMemo(
-    () =>
-      columns.some((c) => c.name === "gift_media_type") ? "gift_media_type" : null,
-    [columns],
-  );
-
-  // Every filled image/video on a message, de-duplicated, in display order.
-  const mediaItemsFor = useCallback(
-    (row: BlogRow): MediaItem[] => {
-      const items: MediaItem[] = [];
-      const seen = new Set<string>();
-      const push = (url: string, typeHint: string) => {
-        if (!isHttpUrl(url) || seen.has(url)) return;
-        seen.add(url);
-        items.push({ url, isVideo: isVideoMedia(url, typeHint) });
-      };
-      if (imageField) push(str(row[imageField]), "");
-      if (giftUrlField) {
-        push(str(row[giftUrlField]), giftTypeField ? str(row[giftTypeField]) : "");
-      }
-      return items;
-    },
-    [imageField, giftUrlField, giftTypeField],
-  );
+  // The writer's avatar image (left), kept separate from the media content
+  // attached to the message (right).
+  const avatarField = useMemo(() => detectMessageAvatarField(columns), [columns]);
+  const mediaSpec = useMemo(() => detectMessageMediaField(columns), [columns]);
 
   const size = CARD_SIZES[cardSize];
 
@@ -351,18 +320,21 @@ export function HappyBoxPanel({
                   const emoji = emojiField ? str(row[emojiField]) : "";
                   const name = authorField ? str(row[authorField]) : "";
                   const message = textField ? str(row[textField]) : "";
-                  const media = mediaItemsFor(row);
 
-                  // Left avatar is the emoji when present, otherwise the first
-                  // still image. Any media shown there is not repeated after the
-                  // text; everything else appears as media content after it.
-                  const firstImage = media.find((item) => !item.isVideo) ?? null;
-                  const leftImageUrl = !emoji ? firstImage?.url ?? null : null;
-                  const afterMedia = media.filter(
-                    (item) => item.url !== leftImageUrl,
-                  );
-                  const hasRight =
-                    (showMessage && Boolean(message)) || afterMedia.length > 0;
+                  // Left = the writer's avatar: emoji first, else their image.
+                  const avatarUrl = avatarField ? str(row[avatarField]) : "";
+                  const showAvatarImage = !emoji && isHttpUrl(avatarUrl);
+
+                  // Right = the media content attached to the message (never the
+                  // writer's avatar image).
+                  const mediaUrl = mediaSpec ? str(row[mediaSpec.url]) : "";
+                  const mediaTypeHint =
+                    mediaSpec?.type ? str(row[mediaSpec.type]) : "";
+                  const hasMedia =
+                    isHttpUrl(mediaUrl) && mediaUrl !== avatarUrl;
+                  const mediaIsVideo = hasMedia && isVideoMedia(mediaUrl, mediaTypeHint);
+
+                  const hasRight = (showMessage && Boolean(message)) || hasMedia;
 
                   return (
                     <Box
@@ -377,7 +349,7 @@ export function HappyBoxPanel({
                         bgcolor: "background.paper",
                       }}
                     >
-                      {/* Left column: emoji or image avatar, with the name below. */}
+                      {/* Left column: emoji or writer image, with the name below. */}
                       <Box
                         sx={{
                           flexShrink: 0,
@@ -388,11 +360,11 @@ export function HappyBoxPanel({
                           gap: 0.75,
                         }}
                       >
-                        {leftImageUrl ? (
+                        {showAvatarImage ? (
                           <Box
                             component="img"
-                            src={leftImageUrl}
-                            alt={name || "Happy message"}
+                            src={avatarUrl}
+                            alt={name || "Message author"}
                             sx={{
                               width: "100%",
                               aspectRatio: "1",
@@ -445,12 +417,11 @@ export function HappyBoxPanel({
                             </Typography>
                           )}
 
-                          {afterMedia.map((item) =>
-                            item.isVideo ? (
+                          {hasMedia &&
+                            (mediaIsVideo ? (
                               <Box
-                                key={item.url}
                                 component="video"
-                                src={item.url}
+                                src={mediaUrl}
                                 controls
                                 preload="metadata"
                                 sx={{
@@ -462,10 +433,9 @@ export function HappyBoxPanel({
                               />
                             ) : (
                               <Box
-                                key={item.url}
                                 component="img"
-                                src={item.url}
-                                alt={name || "Happy message media"}
+                                src={mediaUrl}
+                                alt={name ? `Media from ${name}` : "Message media"}
                                 sx={{
                                   width: "100%",
                                   maxWidth: size.media,
@@ -473,8 +443,7 @@ export function HappyBoxPanel({
                                   objectFit: "cover",
                                 }}
                               />
-                            ),
-                          )}
+                            ))}
                         </Box>
                       )}
                     </Box>
