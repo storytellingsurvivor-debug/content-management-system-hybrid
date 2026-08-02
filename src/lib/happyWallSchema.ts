@@ -240,6 +240,95 @@ export function detectMessageAuthorField(
   return null;
 }
 
+// The column holding a message's emoji / sticker character (e.g. "💛"). Used by
+// the Happy Box grid to show a printable icon next to each message.
+export function detectMessageEmojiField(
+  columns: BlogColumnDefinition[],
+): string | null {
+  const priority = [
+    "emoji",
+    "emojis",
+    "sticker",
+    "reaction",
+    "mood",
+    "icon",
+    "symbol",
+    "feeling",
+  ];
+  for (const name of priority) {
+    const col = columns.find((c) => c.name === name);
+    // Emojis live in a plain text column, never a URL/number/boolean one.
+    if (col && (col.uiType === "text" || col.uiType === "json")) return name;
+  }
+  // Any remaining text column whose name clearly means "emoji".
+  return (
+    columns.find(
+      (c) =>
+        (c.uiType === "text" || c.uiType === "json") &&
+        /(emoji|sticker|reaction|mood)/i.test(c.name),
+    )?.name ?? null
+  );
+}
+
+// The column holding the writer's own picture — the avatar shown on the wall
+// for who posted the message (distinct from any media attached to the message).
+// On Happy-Milo's `happy_wall_message` this is the bare `url` column, which the
+// image-name heuristic wouldn't match, so it's listed explicitly (last, after
+// any clearly-named avatar/photo column).
+export function detectMessageAvatarField(
+  columns: BlogColumnDefinition[],
+): string | null {
+  const priority = [
+    "avatar_url",
+    "avatar",
+    "author_image_url",
+    "author_image",
+    "profile_image_url",
+    "profile_image",
+    "image_url",
+    "image",
+    "photo_url",
+    "photo",
+    "picture_url",
+    "picture",
+    "url",
+  ];
+  for (const name of priority) {
+    const col = columns.find((c) => c.name === name);
+    if (col && col.uiType === "url") return name;
+  }
+  return null;
+}
+
+// The media content attached to a message (an image or a video the sender
+// added), together with the column that says which it is. On Happy-Milo this is
+// `gift_media_url` + `gift_media_type`. This is never the writer's avatar image.
+export function detectMessageMediaField(
+  columns: BlogColumnDefinition[],
+): { url: string; type: string | null } | null {
+  const urlPriority = [
+    "gift_media_url",
+    "media_url",
+    "video_url",
+    "attachment_url",
+    "attachment",
+    "media",
+  ];
+  let urlField: string | null = null;
+  for (const name of urlPriority) {
+    const col = columns.find((c) => c.name === name);
+    if (col && col.uiType === "url") {
+      urlField = name;
+      break;
+    }
+  }
+  if (!urlField) return null;
+  const typePriority = ["gift_media_type", "media_type", "content_type", "video_type"];
+  const typeField =
+    typePriority.find((name) => columns.some((c) => c.name === name)) ?? null;
+  return { url: urlField, type: typeField };
+}
+
 // The foreign-key column that links a message back to its wall.
 export function detectMessageWallFk(
   columns: BlogColumnDefinition[],
