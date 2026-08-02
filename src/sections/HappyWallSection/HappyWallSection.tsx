@@ -7,6 +7,7 @@ import type { EnvironmentLabel } from "@/types/connection";
 import { detectMessageTable } from "@/lib/happyWallSchema";
 import { WallManagerPanel, type SelectedWall } from "./WallManagerPanel";
 import { MessagesPanel } from "./MessagesPanel";
+import { HappyBoxPanel } from "./HappyBoxPanel";
 import { BubblesChoreographyPanel } from "./BubblesChoreographyPanel";
 import { WallAnalyticsPanel } from "./WallAnalyticsPanel";
 
@@ -19,7 +20,7 @@ interface HappyWallSectionProps {
   table: string;
 }
 
-type WallSubTab = "walls" | "choreography" | "analytics";
+type WallSubTab = "walls" | "happyBox" | "choreography" | "analytics";
 
 export function HappyWallSection({
   isConnected,
@@ -57,6 +58,7 @@ export function HappyWallSection({
           aria-label="Happy wall sub tabs"
         >
           <Tab label="Walls" value="walls" />
+          <Tab label="Happy Box" value="happyBox" />
           <Tab label="Bubbles choreography" value="choreography" />
           <Tab label="Analytics" value="analytics" />
         </Tabs>
@@ -84,6 +86,18 @@ export function HappyWallSection({
           />
         </Box>
       </Box>
+
+      {subTab === "happyBox" && (
+        <HappyBoxPanel
+          isConnected={isConnected}
+          client={client}
+          environment={environment}
+          wallTable={table}
+          detectedMessageTable={messageTable}
+          selectedWall={selectedWall}
+          onFeedback={onFeedback}
+        />
+      )}
 
       {subTab === "choreography" && (
         <BubblesChoreographyPanel

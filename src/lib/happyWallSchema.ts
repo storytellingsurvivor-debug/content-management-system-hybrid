@@ -240,6 +240,68 @@ export function detectMessageAuthorField(
   return null;
 }
 
+// The column holding a message's emoji / sticker character (e.g. "💛"). Used by
+// the Happy Box grid to show a printable icon next to each message.
+export function detectMessageEmojiField(
+  columns: BlogColumnDefinition[],
+): string | null {
+  const priority = [
+    "emoji",
+    "emojis",
+    "sticker",
+    "reaction",
+    "mood",
+    "icon",
+    "symbol",
+    "feeling",
+  ];
+  for (const name of priority) {
+    const col = columns.find((c) => c.name === name);
+    // Emojis live in a plain text column, never a URL/number/boolean one.
+    if (col && (col.uiType === "text" || col.uiType === "json")) return name;
+  }
+  // Any remaining text column whose name clearly means "emoji".
+  return (
+    columns.find(
+      (c) =>
+        (c.uiType === "text" || c.uiType === "json") &&
+        /(emoji|sticker|reaction|mood)/i.test(c.name),
+    )?.name ?? null
+  );
+}
+
+// The column holding a message's own image (a drawn/uploaded picture or an
+// avatar), preferred over any wall-level artwork. Falls back to the generic
+// image detector so photo/avatar/drawing columns are all picked up.
+export function detectMessageImageField(
+  columns: BlogColumnDefinition[],
+): string | null {
+  const priority = [
+    "image_url",
+    "image",
+    "photo_url",
+    "photo",
+    "picture_url",
+    "picture",
+    "drawing_url",
+    "drawing",
+    "avatar_url",
+    "avatar",
+    "sticker_url",
+    // Happy-Milo's `happy_wall_message` stores an image/gift message's media in
+    // a bare `url` column (with `gift_media_url` as a secondary), neither of
+    // which matches the image-name heuristic — list them explicitly.
+    "url",
+    "media_url",
+    "gift_media_url",
+  ];
+  for (const name of priority) {
+    const col = columns.find((c) => c.name === name);
+    if (col && col.uiType === "url") return name;
+  }
+  return detectImageFields(columns)[0] ?? null;
+}
+
 // The foreign-key column that links a message back to its wall.
 export function detectMessageWallFk(
   columns: BlogColumnDefinition[],
