@@ -42,11 +42,12 @@ interface HappyBoxPanelProps {
 // neither an emoji nor any media of its own.
 const FALLBACK_EMOJI = "💛";
 
-// Card sizes tune the media footprint and the name/text type scale.
+// Card sizes tune the left avatar (emoji/image), the after-text media footprint
+// and the name/text type scale.
 const CARD_SIZES = {
-  small: { media: 64, name: 12, message: 12 },
-  medium: { media: 96, name: 14, message: 14 },
-  large: { media: 128, name: 16, message: 15 },
+  small: { avatar: 52, emoji: 32, media: 160, name: 12, message: 12 },
+  medium: { avatar: 68, emoji: 42, media: 220, name: 13, message: 14 },
+  large: { avatar: 84, emoji: 54, media: 280, name: 15, message: 15 },
 } as const;
 
 type CardSize = keyof typeof CARD_SIZES;
@@ -87,7 +88,7 @@ export function HappyBoxPanel({
   selectedWall,
   onFeedback,
 }: HappyBoxPanelProps) {
-  const [columnsPerRow, setColumnsPerRow] = useState(6);
+  const [columnsPerRow, setColumnsPerRow] = useState(2);
   const [cardSize, setCardSize] = useState<CardSize>("large");
   const [showMessage, setShowMessage] = useState(true);
   const [showName, setShowName] = useState(true);
@@ -222,9 +223,10 @@ export function HappyBoxPanel({
       <Box sx={{ mb: 1 }}>
         <Typography variant="h6">Happy Box — message grid</Typography>
         <Typography variant="body2" color="text.secondary">
-          Every message of the selected wall as a card — media and name on the
-          left, the message on the right — ready to drop into a PDF or Canva and
-          build the Happy Box.
+          Every message of the selected wall as a card — the writer&apos;s emoji
+          or photo and name on the left, their message (with any image or video)
+          on the right — ready to drop into a PDF or Canva and build the Happy
+          Box.
         </Typography>
       </Box>
 
@@ -351,6 +353,17 @@ export function HappyBoxPanel({
                   const message = textField ? str(row[textField]) : "";
                   const media = mediaItemsFor(row);
 
+                  // Left avatar is the emoji when present, otherwise the first
+                  // still image. Any media shown there is not repeated after the
+                  // text; everything else appears as media content after it.
+                  const firstImage = media.find((item) => !item.isVideo) ?? null;
+                  const leftImageUrl = !emoji ? firstImage?.url ?? null : null;
+                  const afterMedia = media.filter(
+                    (item) => item.url !== leftImageUrl,
+                  );
+                  const hasRight =
+                    (showMessage && Boolean(message)) || afterMedia.length > 0;
+
                   return (
                     <Box
                       key={id || Math.random()}
@@ -364,51 +377,31 @@ export function HappyBoxPanel({
                         bgcolor: "background.paper",
                       }}
                     >
-                      {/* Left column: media (or emoji) with the name beneath it. */}
+                      {/* Left column: emoji or image avatar, with the name below. */}
                       <Box
                         sx={{
                           flexShrink: 0,
-                          width: size.media,
+                          width: size.avatar,
                           display: "flex",
                           flexDirection: "column",
                           alignItems: "center",
                           gap: 0.75,
                         }}
                       >
-                        {media.length > 0 ? (
-                          media.map((item) =>
-                            item.isVideo ? (
-                              <Box
-                                key={item.url}
-                                component="video"
-                                src={item.url}
-                                controls
-                                preload="metadata"
-                                sx={{
-                                  width: "100%",
-                                  aspectRatio: "1",
-                                  objectFit: "cover",
-                                  borderRadius: 2,
-                                  bgcolor: "common.black",
-                                }}
-                              />
-                            ) : (
-                              <Box
-                                key={item.url}
-                                component="img"
-                                src={item.url}
-                                alt={name || "Happy message"}
-                                sx={{
-                                  width: "100%",
-                                  aspectRatio: "1",
-                                  objectFit: "cover",
-                                  borderRadius: 2,
-                                }}
-                              />
-                            ),
-                          )
+                        {leftImageUrl ? (
+                          <Box
+                            component="img"
+                            src={leftImageUrl}
+                            alt={name || "Happy message"}
+                            sx={{
+                              width: "100%",
+                              aspectRatio: "1",
+                              objectFit: "cover",
+                              borderRadius: 2,
+                            }}
+                          />
                         ) : (
-                          <Box sx={{ fontSize: size.media * 0.6, lineHeight: 1 }}>
+                          <Box sx={{ fontSize: size.emoji, lineHeight: 1 }}>
                             {emoji || FALLBACK_EMOJI}
                           </Box>
                         )}
@@ -428,19 +421,61 @@ export function HappyBoxPanel({
                         )}
                       </Box>
 
-                      {/* Right column: the message text. */}
-                      {showMessage && message && (
-                        <Typography
+                      {/* Right column: the message text, then its media content. */}
+                      {hasRight && (
+                        <Box
                           sx={{
                             flex: 1,
-                            fontSize: size.message,
-                            whiteSpace: "pre-wrap",
-                            wordBreak: "break-word",
-                            color: "text.primary",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 1,
+                            minWidth: 0,
                           }}
                         >
-                          {message}
-                        </Typography>
+                          {showMessage && message && (
+                            <Typography
+                              sx={{
+                                fontSize: size.message,
+                                whiteSpace: "pre-wrap",
+                                wordBreak: "break-word",
+                                color: "text.primary",
+                              }}
+                            >
+                              {message}
+                            </Typography>
+                          )}
+
+                          {afterMedia.map((item) =>
+                            item.isVideo ? (
+                              <Box
+                                key={item.url}
+                                component="video"
+                                src={item.url}
+                                controls
+                                preload="metadata"
+                                sx={{
+                                  width: "100%",
+                                  maxWidth: size.media,
+                                  borderRadius: 2,
+                                  bgcolor: "common.black",
+                                }}
+                              />
+                            ) : (
+                              <Box
+                                key={item.url}
+                                component="img"
+                                src={item.url}
+                                alt={name || "Happy message media"}
+                                sx={{
+                                  width: "100%",
+                                  maxWidth: size.media,
+                                  borderRadius: 2,
+                                  objectFit: "cover",
+                                }}
+                              />
+                            ),
+                          )}
+                        </Box>
                       )}
                     </Box>
                   );
