@@ -5,6 +5,8 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
+  CircularProgress,
   LinearProgress,
   Paper,
   TextField,
@@ -13,6 +15,7 @@ import {
 } from "@mui/material";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { BlogRow } from "@/types/blog";
+import type { DistributionSlice } from "@/lib/blogAnalytics";
 import {
   detectLanguageField,
   detectPublicField,
@@ -21,6 +24,8 @@ import {
 import {
   computeWallAnalytics,
   DEFAULT_WALL_GOAL,
+  type FocusInsight,
+  type WallAnalytics,
 } from "@/lib/happyWallAnalytics";
 import { BarList, KpiTile } from "@/sections/ArticlesSection/ArticleAnalytics";
 import {
@@ -39,6 +44,13 @@ interface WallAnalyticsPanelProps {
   table: string;
 }
 
+const TONE_SEVERITY: Record<FocusInsight["tone"], "success" | "warning" | "info"> =
+  {
+    positive: "success",
+    warning: "warning",
+    info: "info",
+  };
+
 function readableError(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.trim()) return error.message;
   return fallback;
@@ -50,6 +62,64 @@ function formatDate(iso: string | null): string {
   return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString();
 }
 
+// byWeekday -> the slice shape BarList expects (percent of the busiest day).
+function weekdaySlices(a: WallAnalytics): DistributionSlice[] {
+  const max = a.byWeekday.reduce((m, d) => Math.max(m, d.count), 0) || 1;
+  return a.byWeekday.map((d) => ({
+    label: d.weekday,
+    count: d.count,
+    percent: Math.round((d.count / max) * 1000) / 10,
+  }));
+}
+
+// The big goal ring: total in the middle, progress around the edge.
+function GoalRing({ analytics }: { analytics: WallAnalytics }) {
+  return (
+    <Box sx={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
+      <CircularProgress
+        variant="determinate"
+        value={100}
+        size={132}
+        thickness={5}
+        sx={{ color: "rgba(255,255,255,0.25)" }}
+      />
+      <CircularProgress
+        variant="determinate"
+        value={analytics.goalPercent}
+        size={132}
+        thickness={5}
+        sx={{
+          color: "common.white",
+          position: "absolute",
+          left: 0,
+          "& .MuiCircularProgress-circle": { strokeLinecap: "round" },
+        }}
+      />
+      <Box
+        sx={{
+          position: "absolute",
+          inset: 0,
+          display: "grid",
+          placeItems: "center",
+          textAlign: "center",
+        }}
+      >
+        <Box>
+          <Typography variant="h4" sx={{ lineHeight: 1, color: "common.white" }}>
+            {analytics.total}
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{ color: "rgba(255,255,255,0.85)" }}
+          >
+            of {analytics.goal}
+          </Typography>
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
 export function WallAnalyticsPanel({
   isConnected,
   client,
@@ -59,6 +129,7 @@ export function WallAnalyticsPanel({
   const [loading, setLoading] = useState(false);
   const [unavailable, setUnavailable] = useState<string | null>(null);
   const [goalInput, setGoalInput] = useState(String(DEFAULT_WALL_GOAL));
+  const [targetDate, setTargetDate] = useState("");
 
   const load = useCallback(async () => {
     if (!client) return;
@@ -105,14 +176,23 @@ export function WallAnalyticsPanel({
   }, [goalInput]);
 
   const analytics = useMemo(
-    () => computeWallAnalytics({ rows, publicField, languageField, goal }),
-    [rows, publicField, languageField, goal],
+    () =>
+      computeWallAnalytics({
+        rows,
+        publicField,
+        languageField,
+        goal,
+        targetDate: targetDate || null,
+      }),
+    [rows, publicField, languageField, goal, targetDate],
   );
 
   const sparkMax =
     analytics.perDay.reduce((m, d) => Math.max(m, d.count), 0) || 1;
   const monthMax =
     analytics.byMonth.reduce((m, d) => Math.max(m, d.count), 0) || 1;
+
+  const momentum = analytics.weekMomentumPct;
 
   return (
     <Paper elevation={2} sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3 }}>
@@ -127,21 +207,30 @@ export function WallAnalyticsPanel({
         }}
       >
         <Box>
-          <Typography variant="h6">Happy Walls · creation analytics</Typography>
+          <Typography variant="h6">Happy Walls · your road to the goal</Typography>
           <Typography variant="body2" color="text.secondary">
             Every wall created in <code>{table}</code> — public and private —
-            with progress toward your creation goal.
+            with momentum, streaks and where to focus next.
           </Typography>
         </Box>
-        <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
+        <Box sx={{ display: "flex", gap: 1.5, alignItems: "center", flexWrap: "wrap" }}>
           <TextField
             size="small"
             type="number"
             label="Goal"
             value={goalInput}
             onChange={(event) => setGoalInput(event.target.value)}
-            sx={{ width: 110 }}
+            sx={{ width: 100 }}
             slotProps={{ htmlInput: { min: 1 } }}
+          />
+          <TextField
+            size="small"
+            type="date"
+            label="Target date"
+            value={targetDate}
+            onChange={(event) => setTargetDate(event.target.value)}
+            sx={{ width: 170 }}
+            slotProps={{ inputLabel: { shrink: true } }}
           />
           <Button variant="outlined" onClick={load} disabled={!isConnected || loading}>
             {loading ? "Refreshing…" : "Refresh"}
@@ -158,67 +247,184 @@ export function WallAnalyticsPanel({
       ) : loading && rows.length === 0 ? (
         <Alert severity="info">Loading walls…</Alert>
       ) : analytics.total === 0 ? (
-        <Alert severity="info">No Happy Walls created yet.</Alert>
+        <Alert severity="info">
+          No Happy Walls created yet — create your first one and this board
+          starts cheering you on toward {analytics.goal}.
+        </Alert>
       ) : (
         <Box sx={statsPanelSx}>
-          {/* Goal progress toward the target number of created walls. */}
-          <Paper variant="outlined" sx={{ p: 2, mb: 1 }}>
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "baseline",
-                gap: 1,
-                mb: 1,
-                flexWrap: "wrap",
-              }}
-            >
-              <Typography variant="subtitle2">
-                Goal · {analytics.total} / {analytics.goal} walls created
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
+          {/* Motivational hero: goal ring + headline + momentum. */}
+          <Box
+            sx={{
+              p: { xs: 2, sm: 3 },
+              borderRadius: 3,
+              color: "common.white",
+              background:
+                "linear-gradient(120deg, #4F46E5 0%, #6366F1 45%, #EC4899 120%)",
+              boxShadow: "0 18px 40px -24px rgba(79,70,229,0.65)",
+              display: "flex",
+              alignItems: "center",
+              gap: { xs: 2, sm: 3 },
+              flexWrap: "wrap",
+            }}
+          >
+            <GoalRing analytics={analytics} />
+            <Box sx={{ flex: 1, minWidth: 220 }}>
+              <Typography variant="h5" sx={{ mb: 0.5 }}>
                 {analytics.reached
-                  ? "🎉 Goal reached!"
-                  : `${analytics.remaining} to go · ${analytics.goalPercent}%`}
+                  ? "🎉 Goal reached — incredible!"
+                  : `${analytics.remaining} walls to go`}
               </Typography>
+              <Typography sx={{ color: "rgba(255,255,255,0.9)", mb: 1.5 }}>
+                {analytics.reached
+                  ? `You've created ${analytics.total} Happy Walls. Raise the goal to keep climbing.`
+                  : analytics.targetDate && analytics.requiredPerDay !== null
+                    ? `Hit ${analytics.goal} by ${formatDate(
+                        analytics.targetDate,
+                      )} → create ${analytics.requiredPerDay.toFixed(
+                        1,
+                      )}/day (you're at ${analytics.avgPerDayLast30.toFixed(1)}/day).`
+                    : analytics.projectedGoalDate
+                      ? `At your recent pace you'll get there around ${formatDate(
+                          analytics.projectedGoalDate,
+                        )}.`
+                      : "Create a few walls to kick-start your pace and see a finish date."}
+              </Typography>
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                <Chip
+                  label={`${analytics.goalPercent}% complete`}
+                  sx={{
+                    color: "#4F46E5",
+                    bgcolor: "rgba(255,255,255,0.95)",
+                    fontWeight: 700,
+                  }}
+                />
+                {momentum !== null && (
+                  <Chip
+                    label={`${momentum >= 0 ? "▲" : "▼"} ${Math.abs(
+                      momentum,
+                    )}% vs last week`}
+                    sx={{
+                      color: "common.white",
+                      bgcolor:
+                        momentum >= 0
+                          ? "rgba(22,163,74,0.9)"
+                          : "rgba(220,38,38,0.9)",
+                      fontWeight: 700,
+                    }}
+                  />
+                )}
+                {analytics.currentStreakDays > 0 && (
+                  <Chip
+                    label={`🔥 ${analytics.currentStreakDays}-day streak`}
+                    sx={{
+                      color: "common.white",
+                      bgcolor: "rgba(255,255,255,0.2)",
+                      fontWeight: 700,
+                    }}
+                  />
+                )}
+                {analytics.nextMilestone !== null && (
+                  <Chip
+                    label={`Next milestone: ${analytics.nextMilestone} (${analytics.toNextMilestone} away)`}
+                    sx={{
+                      color: "common.white",
+                      bgcolor: "rgba(255,255,255,0.2)",
+                      fontWeight: 700,
+                    }}
+                  />
+                )}
+              </Box>
             </Box>
-            <LinearProgress
-              variant="determinate"
-              value={analytics.goalPercent}
-              aria-label={`Goal progress: ${analytics.total} of ${analytics.goal} walls`}
-              sx={{ height: 12, borderRadius: 1 }}
-            />
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ mt: 1, display: "block" }}
-            >
-              {analytics.reached
-                ? "You have hit the target — set a higher goal to keep tracking."
-                : analytics.projectedGoalDate
-                  ? `At the last-30-day pace (${analytics.avgPerDayLast30.toFixed(
-                      1,
-                    )} walls/day) you reach ${analytics.goal} around ${formatDate(
-                      analytics.projectedGoalDate,
-                    )} (~${analytics.projectedDaysToGoal} days).`
-                  : "No walls created in the last 30 days — no forecast yet. Create walls to project a completion date."}
-            </Typography>
-          </Paper>
+          </Box>
 
+          {/* Where to focus: the prioritised clue list. */}
+          {analytics.insights.length > 0 && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                Where to focus
+              </Typography>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                {analytics.insights.map((insight, i) => (
+                  <Alert key={i} severity={TONE_SEVERITY[insight.tone]} icon={false}>
+                    <strong>
+                      {insight.icon} {insight.title}
+                    </strong>{" "}
+                    — {insight.detail}
+                  </Alert>
+                ))}
+              </Box>
+            </Box>
+          )}
+
+          {/* Deadline pace check (only when a target date is set). */}
+          {analytics.targetDate &&
+            analytics.requiredPerDay !== null &&
+            !analytics.reached && (
+              <Paper variant="outlined" sx={{ p: 2, mt: 2 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "baseline",
+                    gap: 1,
+                    mb: 1,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <Typography variant="subtitle2">
+                    Pace check · {formatDate(analytics.targetDate)}
+                  </Typography>
+                  <Chip
+                    size="small"
+                    color={analytics.onTrackForDeadline ? "success" : "warning"}
+                    label={
+                      analytics.onTrackForDeadline ? "On track" : "Behind pace"
+                    }
+                  />
+                </Box>
+                <Typography variant="body2" color="text.secondary">
+                  {analytics.daysUntilTarget !== null &&
+                  analytics.daysUntilTarget > 0
+                    ? `${analytics.daysUntilTarget} days left · need ${analytics.requiredPerDay.toFixed(
+                        1,
+                      )} walls/day · running ${analytics.avgPerDayLast30.toFixed(
+                        1,
+                      )}/day (last 30d).`
+                    : "The target date has already passed — set a new one."}
+                </Typography>
+                <LinearProgress
+                  variant="determinate"
+                  value={Math.min(
+                    100,
+                    analytics.requiredPerDay > 0
+                      ? (analytics.avgPerDayLast30 / analytics.requiredPerDay) * 100
+                      : 100,
+                  )}
+                  color={analytics.onTrackForDeadline ? "success" : "warning"}
+                  sx={{ height: 8, borderRadius: 1, mt: 1 }}
+                />
+              </Paper>
+            )}
+
+          {/* Momentum & consistency at a glance. */}
           <Box sx={kpiGridSx}>
-            <KpiTile label="Total created" value={analytics.total} />
-            <KpiTile label="Public" value={analytics.publicCount} />
-            <KpiTile label="Private" value={analytics.privateCount} />
+            <KpiTile label="Today" value={analytics.createdToday} />
+            <KpiTile label="This week" value={analytics.createdLast7Days} />
             <KpiTile label="This month" value={analytics.createdThisMonth} />
-            <KpiTile label="Last 7 days" value={analytics.createdLast7Days} />
-            <KpiTile label="Last 30 days" value={analytics.createdLast30Days} />
+            <KpiTile label="Current streak" value={`${analytics.currentStreakDays}d`} />
+            <KpiTile label="Best streak" value={`${analytics.longestStreakDays}d`} />
+            <KpiTile
+              label="Best day"
+              value={analytics.bestDay ? analytics.bestDay.count : 0}
+            />
+            <KpiTile
+              label="Active days (30d)"
+              value={`${analytics.activeDaysLast30}/30`}
+            />
             <KpiTile
               label="Avg / day (30d)"
               value={analytics.avgPerDayLast30.toFixed(1)}
-            />
-            <KpiTile
-              label="Avg / day (all)"
-              value={analytics.avgPerDayAllTime.toFixed(1)}
             />
           </Box>
 
@@ -228,7 +434,8 @@ export function WallAnalyticsPanel({
             sx={{ mt: 1, display: "block" }}
           >
             First wall: {formatDate(analytics.firstCreatedAt)} · latest:{" "}
-            {formatDate(analytics.lastCreatedAt)}
+            {formatDate(analytics.lastCreatedAt)} ·{" "}
+            {analytics.publicCount} public / {analytics.privateCount} private
           </Typography>
 
           <Paper variant="outlined" sx={sparklineWrapSx}>
@@ -299,8 +506,9 @@ export function WallAnalyticsPanel({
           )}
 
           <Box sx={distGridSx}>
-            <BarList title="Visibility" slices={analytics.visibility} />
+            <BarList title="Best days of the week" slices={weekdaySlices(analytics)} />
             <BarList title="By language" slices={analytics.byLanguage} />
+            <BarList title="Visibility" slices={analytics.visibility} />
           </Box>
         </Box>
       )}
