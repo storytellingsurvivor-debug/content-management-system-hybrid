@@ -35,6 +35,25 @@ function rowSelectionValue(row: BlogRow): string {
   return slug ? `slug:${slug}` : "";
 }
 
+// Only the columns the user actually changed, compared against the row as it
+// was loaded from the DB. Both sides go through the same form->payload pipeline,
+// so an untouched field compares equal and is dropped. This is what makes a
+// title-only edit send `{ title_or_description }` alone instead of re-sending
+// every column — re-sending would push `null` into NOT NULL columns the editor
+// left blank (e.g. `height`) and Postgres rejects it ("height cannot be null").
+function diffPayload(
+  next: Record<string, unknown>,
+  baseline: Record<string, unknown>,
+): Record<string, unknown> {
+  const changed: Record<string, unknown> = {};
+  for (const key of Object.keys(next)) {
+    if (JSON.stringify(next[key]) !== JSON.stringify(baseline[key])) {
+      changed[key] = next[key];
+    }
+  }
+  return changed;
+}
+
 function readableError(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.trim()) return error.message;
   if (error && typeof error === "object" && "message" in error) {
@@ -80,6 +99,9 @@ export function useAdaptiveTable({
   const [selectedId, setSelectedId] = useState<string>("");
   const [mode, setMode] = useState<EditorMode>("create");
   const [form, setForm] = useState<BlogRow>(() => rowToForm(null, inferColumns(null)));
+  // The selected row exactly as it was loaded from the DB, used to send only the
+  // fields the user changed on update. Null while creating a new row.
+  const [baselineRow, setBaselineRow] = useState<BlogRow | null>(null);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -123,10 +145,12 @@ export function useAdaptiveTable({
       if (prev && stillThere) {
         setMode("edit");
         setForm(rowToForm(stillThere, nextColumns));
+        setBaselineRow(stillThere);
         return prev;
       }
       setMode("create");
       setForm(rowToForm(null, nextColumns));
+      setBaselineRow(null);
       return "";
     });
     setLoading(false);
@@ -139,12 +163,14 @@ export function useAdaptiveTable({
       if (!value) {
         setMode("create");
         setForm(rowToForm(null, columns));
+        setBaselineRow(null);
         return;
       }
       const selected = rows.find((row) => rowSelectionValue(row) === value);
       if (!selected) return;
       setMode("edit");
       setForm(rowToForm(selected, columns));
+      setBaselineRow(selected);
     },
     [rows, columns],
   );
@@ -154,6 +180,7 @@ export function useAdaptiveTable({
     setSelectedId("");
     setMode("create");
     setForm(rowToForm(null, columns));
+    setBaselineRow(null);
     onFeedback(`${label} create mode enabled.`);
   }, [columns, label, onFeedback]);
 
@@ -228,15 +255,28 @@ export function useAdaptiveTable({
           setSelectedId(rowSelectionValue(created));
           setMode("edit");
           setForm(rowToForm(created, columns));
+          setBaselineRow(created);
           onFeedback(`${label} created successfully.`);
         }
 
         if (action === "update") {
           const target = resolveFilter();
           if (!target) throw new Error("Update requires id or slug.");
+          // Send only what changed. Editing just the title must not re-send
+          // untouched NOT NULL columns (e.g. `height`) as null.
+          const update = baselineRow
+            ? diffPayload(
+                payload,
+                toHappyPayload(rowToForm(baselineRow, columns), columns),
+              )
+            : payload;
+          if (Object.keys(update).length === 0) {
+            onFeedback(`No changes to save.`);
+            return;
+          }
           const { data, error: updateError } = await client
             .from(table)
-            .update(payload)
+            .update(update)
             .eq(target.field, target.value)
             .select("*");
           if (updateError) throw updateError;
@@ -246,6 +286,7 @@ export function useAdaptiveTable({
             );
           }
           setForm(rowToForm(data[0] as BlogRow, columns));
+          setBaselineRow(data[0] as BlogRow);
           onFeedback(`${label} updated successfully.`);
         }
 
@@ -261,6 +302,7 @@ export function useAdaptiveTable({
           setSelectedId("");
           setMode("create");
           setForm(rowToForm(null, columns));
+          setBaselineRow(null);
         }
 
         await load();
@@ -270,7 +312,7 @@ export function useAdaptiveTable({
         setSubmitting(false);
       }
     },
-    [client, form, columns, table, label, confirmProd, resolveFilter, load, onFeedback],
+    [client, form, columns, table, label, baselineRow, confirmProd, resolveFilter, load, onFeedback],
   );
 
   return {

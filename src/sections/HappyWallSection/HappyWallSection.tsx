@@ -8,6 +8,7 @@ import { detectMessageTable } from "@/lib/happyWallSchema";
 import { WallManagerPanel, type SelectedWall } from "./WallManagerPanel";
 import { MessagesPanel } from "./MessagesPanel";
 import { BubblesChoreographyPanel } from "./BubblesChoreographyPanel";
+import { WallAnalyticsPanel } from "./WallAnalyticsPanel";
 
 interface HappyWallSectionProps {
   isConnected: boolean;
@@ -18,7 +19,7 @@ interface HappyWallSectionProps {
   table: string;
 }
 
-type WallSubTab = "walls" | "choreography";
+type WallSubTab = "walls" | "choreography" | "analytics";
 
 export function HappyWallSection({
   isConnected,
@@ -57,6 +58,7 @@ export function HappyWallSection({
         >
           <Tab label="Walls" value="walls" />
           <Tab label="Bubbles choreography" value="choreography" />
+          <Tab label="Analytics" value="analytics" />
         </Tabs>
       </Box>
 
@@ -89,6 +91,14 @@ export function HappyWallSection({
           client={client}
           environment={environment}
           onFeedback={onFeedback}
+          table={table}
+        />
+      )}
+
+      {subTab === "analytics" && (
+        <WallAnalyticsPanel
+          isConnected={isConnected}
+          client={client}
           table={table}
         />
       )}
