@@ -267,11 +267,6 @@ export function validateHappyPayload(
     if (empty) return `${column.label} is required.`;
   }
 
-  const slug = String(payload.slug ?? "").trim();
-  if (slug && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
-    return "Slug format is invalid. Use lowercase letters, numbers, and hyphens.";
-  }
-
   for (const column of columns) {
     if (column.uiType !== "url") continue;
     const value = payload[column.name];
