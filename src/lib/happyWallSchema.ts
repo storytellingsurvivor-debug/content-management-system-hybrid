@@ -16,6 +16,18 @@ const READ_ONLY_NAMES = new Set(["id", "created_at", "updated_at", "inserted_at"
 
 // Names that clearly hold an image URL (background art, avatars, covers…).
 const IMAGE_NAME = /(background|bg|image|img|photo|picture|cover|banner|avatar|logo|thumbnail|wallpaper)/i;
+// "image"-named columns that describe how an image is laid out rather than
+// where it lives: geometry (card_image_height, card_image_position_x…) and
+// CSS-ish styling (image_fit, image_align…). These hold numbers or short
+// keywords, never a link, so they must not be typed as a URL or the editor
+// would reject them on save ("… must be a valid URL.") and the preview would
+// try to render them as image thumbnails.
+const IMAGE_ATTRIBUTE_NAME =
+  /(height|width|size|scale|zoom|position|offset|coord|rotation|rotate|angle|skew|opacity|alpha|blur|radius|ratio|aspect|align|anchor|gravity|repeat|fit|mode|tint|margin|padding|spacing|border|duration|delay|speed|order|weight|level|priority|_x$|_y$|top$|left$|right$|bottom$)/i;
+// The subset of image-attribute names that specifically hold a numeric value,
+// used to type them as a number even when the current row's value is null.
+const IMAGE_DIMENSION_NAME =
+  /(height|width|size|scale|zoom|position|offset|rotation|angle|opacity|alpha|blur|radius|ratio|duration|delay|speed|_x$|_y$|top$|left$|right$|bottom$)/i;
 // The subset of image names that specifically mean "wall background artwork".
 const BACKGROUND_NAME = /(background|bg|cover|banner|wallpaper)/i;
 const MOBILE_HINT = /(mobile|phone|portrait|small|_xs|_sm)/i;
@@ -32,12 +44,19 @@ function toLabel(name: string): string {
 function guessUiType(name: string, value: unknown): FieldUiType {
   const n = name.toLowerCase();
   if (n.includes("choreography") || n.endsWith("_json")) return "json";
-  if (IMAGE_NAME.test(n) || n.endsWith("_url") || n.includes("url")) return "url";
+  // A URL-ish name only means a link when it isn't really an image *attribute*
+  // (card_image_height, card_image_position_x, image_fit…): those describe the
+  // image, they don't point at one.
+  const looksLikeUrlName =
+    IMAGE_NAME.test(n) || n.endsWith("_url") || n.includes("url");
+  if (looksLikeUrlName && !IMAGE_ATTRIBUTE_NAME.test(n)) return "url";
   if (n.endsWith("_at") || n.includes("date")) return "datetime";
   if (typeof value === "boolean" || n.startsWith("is_") || n.startsWith("has_")) {
     return "boolean";
   }
   if (typeof value === "number") return "number";
+  // No value to infer from, but the name reads as a dimension/coordinate.
+  if (value == null && IMAGE_DIMENSION_NAME.test(n)) return "number";
   if (value !== null && typeof value === "object") return "json";
   return "text";
 }
