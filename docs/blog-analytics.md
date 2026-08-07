@@ -46,8 +46,11 @@ excluded (an eye icon in the card footer). A view counts as robotic when the
 link-preview fetcher, headless monitor…), classified by `src/lib/userAgent.ts`.
 A signature with no `browsers` row cannot be judged, so it is kept as human.
 
-The controls row adds a **Filter by category** dropdown (built from the
-`category` values present on the loaded articles) and a **Sort by** control:
+The controls row adds a **Filter by category** dropdown and a **Sort by**
+control. The category options are scoped to the chosen language — pick a
+language and the dropdown lists only the categories that exist for it (all
+categories when no language is selected); a category the new language lacks is
+cleared so the filters can't combine into an always-empty result. **Sort by**:
 _Most visited_ / _Least visited_ order the cards by that same bot-excluded
 visit count. Sorting is available only when the analytics tables exist.
 
