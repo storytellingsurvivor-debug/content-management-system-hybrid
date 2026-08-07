@@ -21,6 +21,7 @@ import {
   BROWSERS_TABLE,
   computeAnalyticsByArticle,
   computeBlogAnalytics,
+  computeHumanReadsByArticle,
   type BlogAnalytics,
   type BlogViewRow,
   type BrowserRow,
@@ -115,6 +116,11 @@ function articleTitle(row: BlogRow): string {
   );
 }
 
+// Ordering options for the article row. "default" keeps the incoming order
+// (newest first, as loaded); the two "visits" modes rank by human reads with
+// robots and bots excluded (see computeHumanReadsByArticle).
+type SortMode = "default" | "visits-desc" | "visits-asc";
+
 // "live" / "off" from is_live or is_active, "" when the row has neither flag.
 function rowStatus(row: BlogRow): "live" | "off" | "" {
   for (const key of ["is_live", "is_active"]) {
@@ -137,6 +143,8 @@ export function ArticlesSection({
 }: ArticlesSectionProps) {
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [languageFilter, setLanguageFilter] = useState<string>("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("");
+  const [sortMode, setSortMode] = useState<SortMode>("default");
   const [viewRows, setViewRows] = useState<BlogViewRow[]>([]);
   const [browsers, setBrowsers] = useState<Map<string, BrowserRow>>(new Map());
   const [statsError, setStatsError] = useState<string | null>(null);
@@ -189,6 +197,21 @@ export function ArticlesSection({
     [viewRows, browsers],
   );
 
+  // Human reads per article (robots and bots excluded) — drives both the
+  // per-card visit count and the "most/least visited" ordering.
+  const humanReadsByArticle = useMemo(
+    () => computeHumanReadsByArticle(viewRows, browsers),
+    [viewRows, browsers],
+  );
+
+  const humanReadsOf = useCallback(
+    (article: BlogRow): number => {
+      const id = String(article.id ?? "").trim();
+      return id ? (humanReadsByArticle.get(id) ?? 0) : 0;
+    },
+    [humanReadsByArticle],
+  );
+
   const hasStatusFlag = useMemo(
     () => articles.some((article) => rowStatus(article) !== ""),
     [articles],
@@ -204,8 +227,18 @@ export function ArticlesSection({
     ).sort((a, b) => a.localeCompare(b));
   }, [articles]);
 
+  const distinctCategories = useMemo(() => {
+    return Array.from(
+      new Set(
+        articles
+          .map((article) => pickField(article, "category"))
+          .filter((value) => value.length > 0),
+      ),
+    ).sort((a, b) => a.localeCompare(b));
+  }, [articles]);
+
   const visibleArticles = useMemo(() => {
-    return articles.filter((article) => {
+    const filtered = articles.filter((article) => {
       if (statusFilter && rowStatus(article) !== statusFilter) {
         return false;
       }
@@ -215,9 +248,20 @@ export function ArticlesSection({
       ) {
         return false;
       }
+      if (categoryFilter && pickField(article, "category") !== categoryFilter) {
+        return false;
+      }
       return true;
     });
-  }, [articles, statusFilter, languageFilter]);
+
+    if (sortMode === "default") return filtered;
+
+    // Copy before sorting so we never mutate the `articles` prop in place.
+    const direction = sortMode === "visits-asc" ? 1 : -1;
+    return [...filtered].sort(
+      (a, b) => direction * (humanReadsOf(a) - humanReadsOf(b)),
+    );
+  }, [articles, statusFilter, languageFilter, categoryFilter, sortMode, humanReadsOf]);
 
   const selectedArticle = useMemo(
     () =>
@@ -291,6 +335,38 @@ export function ArticlesSection({
               ))}
             </TextField>
 
+            <TextField
+              select
+              label="Filter by category"
+              value={categoryFilter}
+              onChange={(event) => setCategoryFilter(event.target.value)}
+              disabled={isLoading || distinctCategories.length === 0}
+              fullWidth
+            >
+              <MenuItem value="">All categories</MenuItem>
+              {distinctCategories.map((category) => (
+                <MenuItem key={category} value={category}>
+                  {category}
+                </MenuItem>
+              ))}
+            </TextField>
+
+            <TextField
+              select
+              label="Sort by"
+              value={sortMode}
+              onChange={(event) =>
+                setSortMode(event.target.value as SortMode)
+              }
+              disabled={isLoading || !statsAvailable}
+              helperText={statsAvailable ? "Visits exclude robots & bots" : ""}
+              fullWidth
+            >
+              <MenuItem value="default">Default order</MenuItem>
+              <MenuItem value="visits-desc">Most visited</MenuItem>
+              <MenuItem value="visits-asc">Least visited</MenuItem>
+            </TextField>
+
             <Button
               variant="outlined"
               onClick={handleRefresh}
@@ -346,6 +422,7 @@ export function ArticlesSection({
                     article={article}
                     isSelected={value === selectedArticleId}
                     onSelect={() => onSelectArticle(value)}
+                    visits={statsAvailable ? humanReadsOf(article) : null}
                   />
                 );
               })}
