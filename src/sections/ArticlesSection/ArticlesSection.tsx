@@ -227,15 +227,24 @@ export function ArticlesSection({
     ).sort((a, b) => a.localeCompare(b));
   }, [articles]);
 
+  // Categories are scoped to the chosen language, so the dropdown only offers
+  // categories that actually exist for that language (all categories when no
+  // language is selected).
   const distinctCategories = useMemo(() => {
     return Array.from(
       new Set(
         articles
+          .filter(
+            (article) =>
+              !languageFilter ||
+              pickField(article, "language", "lang", "locale") ===
+                languageFilter,
+          )
           .map((article) => pickField(article, "category"))
           .filter((value) => value.length > 0),
       ),
     ).sort((a, b) => a.localeCompare(b));
-  }, [articles]);
+  }, [articles, languageFilter]);
 
   const visibleArticles = useMemo(() => {
     const filtered = articles.filter((article) => {
@@ -323,7 +332,23 @@ export function ArticlesSection({
               select
               label="Filter by language"
               value={languageFilter}
-              onChange={(event) => setLanguageFilter(event.target.value)}
+              onChange={(event) => {
+                const nextLanguage = event.target.value;
+                setLanguageFilter(nextLanguage);
+                // Clear a category the newly chosen language doesn't have, so
+                // the filters can't combine into an always-empty result.
+                setCategoryFilter((current) => {
+                  if (!current) return current;
+                  const stillAvailable = articles.some(
+                    (article) =>
+                      pickField(article, "category") === current &&
+                      (!nextLanguage ||
+                        pickField(article, "language", "lang", "locale") ===
+                          nextLanguage),
+                  );
+                  return stillAvailable ? current : "";
+                });
+              }}
               disabled={isLoading || distinctLanguages.length === 0}
               fullWidth
             >
