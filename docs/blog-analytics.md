@@ -40,10 +40,21 @@ only fetches the signatures that appear in `blog_views` (chunked `.in()`).
 
 ## What you see
 
+Each card shows its own **visit count** — human reads with robots and bots
+excluded (an eye icon in the card footer). A view counts as robotic when the
+`browsers` row for its signature has a bot `user_agent` (crawler, spider,
+link-preview fetcher, headless monitor…), classified by `src/lib/userAgent.ts`.
+A signature with no `browsers` row cannot be judged, so it is kept as human.
+
+The controls row adds a **Filter by category** dropdown (built from the
+`category` values present on the loaded articles) and a **Sort by** control:
+_Most visited_ / _Least visited_ order the cards by that same bot-excluded
+visit count. Sorting is available only when the analytics tables exist.
+
 Under the article cards sits one **collapsible** panel — closed by default, so
 it stays out of the way. Its toggle always shows the headline count. Select a
 card and the panel reports that article; deselect ("Clear selection") and it
-summarises every article at once. Cards themselves are unchanged.
+summarises every article at once.
 
 - **Reads** — rows in `blog_views` (scoped to the selected article).
 - **Unique visitors** — distinct `browser_signature`.

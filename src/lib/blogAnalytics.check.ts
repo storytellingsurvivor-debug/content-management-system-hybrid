@@ -17,9 +17,13 @@ registerHooks({
   },
 });
 
-const { computeBlogAnalytics, isTrue, urlHost } = await import(
-  "./blogAnalytics.ts"
-);
+const {
+  computeBlogAnalytics,
+  computeHumanReadsByArticle,
+  isBotView,
+  isTrue,
+  urlHost,
+} = await import("./blogAnalytics.ts");
 type BlogViewRow = import("./blogAnalytics.ts").BlogViewRow;
 type BrowserRow = import("./blogAnalytics.ts").BrowserRow;
 
@@ -95,5 +99,41 @@ assert.equal(isTrue("TRUE"), true);
 assert.equal(isTrue(null), false);
 assert.equal(urlHost("not a url"), null);
 assert.equal(urlHost(""), null);
+
+// Human reads exclude robots/bots. Add one bot reader on article 1, plus a
+// signature with no browsers row (unknown UA), which must still count.
+const botBrowsers = new Map<string, BrowserRow>([
+  ...browsers,
+  [
+    "bot",
+    {
+      browser_signature: "bot",
+      device: "desktop",
+      user_agent:
+        "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+      url_source: "https://happy-milo.com/blog/hello",
+    },
+  ],
+]);
+const rowsWithBot: BlogViewRow[] = [
+  ...rows,
+  { blog_id: 1, browser_signature: "bot", created_at: daysAgo(0) },
+];
+
+assert.equal(
+  isBotView(rowsWithBot[rowsWithBot.length - 1], botBrowsers),
+  true,
+  "Googlebot UA is a bot",
+);
+assert.equal(
+  isBotView(rows[0], botBrowsers),
+  false,
+  "Safari on iPhone is not a bot",
+);
+
+const humanReads = computeHumanReadsByArticle(rowsWithBot, botBrowsers);
+// Article 1 had 3 rows (a, b, c) + 1 bot -> 3 human reads; the bot is dropped.
+assert.equal(humanReads.get("1"), 3, "bot read excluded from article 1");
+assert.equal(humanReads.get("2"), 1, "article 2 unaffected");
 
 console.log("blog analytics: ok");

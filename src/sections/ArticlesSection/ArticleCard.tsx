@@ -5,6 +5,7 @@ import type { SxProps, Theme } from "@mui/material/styles";
 import ArticleIcon from "@mui/icons-material/Article";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutlined";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import type { BlogRow } from "@/types/blog";
 import {
   cardBodySx,
@@ -21,6 +22,9 @@ interface ArticleCardProps {
   article: BlogRow;
   isSelected: boolean;
   onSelect: () => void;
+  // Human reads for this article (robots and bots excluded). `null` when the
+  // brand's DB has no analytics tables, so nothing is shown.
+  visits?: number | null;
 }
 
 function pickString(row: BlogRow, ...keys: string[]): string {
@@ -72,6 +76,7 @@ export function ArticleCard({
   article,
   isSelected,
   onSelect,
+  visits = null,
 }: ArticleCardProps) {
   const live = article.is_live === true;
   const title = pickString(article, "title", "slug") || "Untitled article";
@@ -177,6 +182,16 @@ export function ArticleCard({
           )}
 
           <Box sx={cardMetaRowSx}>
+            {visits !== null && (
+              <Box
+                component="span"
+                sx={{ display: "flex", alignItems: "center", gap: 0.25 }}
+                title={`${visits} visit(s), robots & bots excluded`}
+              >
+                <VisibilityOutlinedIcon sx={{ fontSize: 14 }} />
+                {visits}
+              </Box>
+            )}
             {author && (
               <Box component="span" sx={{ flex: 1, minWidth: 0 }}>
                 <Box

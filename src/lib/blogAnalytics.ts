@@ -231,6 +231,39 @@ export function computeAnalyticsByArticle(
   return byArticle;
 }
 
+// A view is "robotic" when the browser behind its signature has a bot user
+// agent (crawler, spider, link-preview fetcher, headless monitor…). We look the
+// signature up in the browsers map and let `parseUserAgent` classify the UA.
+// When we have no browser row for a signature we cannot tell, so we keep the
+// view — dropping unknowns would silently discard genuine reads.
+export function isBotView(
+  row: BlogViewRow,
+  browsersBySignature: Map<string, BrowserRow>,
+): boolean {
+  const signature = normLabel(row.browser_signature, "");
+  if (!signature) return false;
+  const browser = browsersBySignature.get(signature);
+  if (!browser) return false;
+  return parseUserAgent(browser.user_agent).deviceType === "bot";
+}
+
+// Human (non-bot) reads per article, keyed by `String(blog_id)` to match
+// `String(row.id)`. Used to rank the article cards by real readership, with
+// robots and bots excluded from the count.
+export function computeHumanReadsByArticle(
+  rows: BlogViewRow[],
+  browsersBySignature: Map<string, BrowserRow>,
+): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    if (isBotView(row, browsersBySignature)) continue;
+    const id = normLabel(row.blog_id == null ? "" : String(row.blog_id), "");
+    if (!id) continue;
+    counts.set(id, (counts.get(id) ?? 0) + 1);
+  }
+  return counts;
+}
+
 // The single most common label of a distribution, for the compact card view.
 export function topLabel(slices: DistributionSlice[]): string | null {
   return slices.length > 0 ? slices[0].label : null;

@@ -14,9 +14,10 @@ export const controlsGridSx: SxProps<Theme> = {
   gap: 2,
   gridTemplateColumns: {
     xs: "1fr",
-    md: "1fr 1fr auto auto",
+    sm: "1fr 1fr",
+    lg: "repeat(4, 1fr) auto auto",
   },
-  alignItems: "end",
+  alignItems: "start",
 };
 
 export const infoRowSx: SxProps<Theme> = {
