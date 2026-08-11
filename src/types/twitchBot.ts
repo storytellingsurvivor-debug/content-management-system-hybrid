@@ -21,6 +21,12 @@ export interface TwitchSessionRow {
   channel_id: string;
   trigger_command: string;
   success_message: string;
+  // Server-side only: the per-session ownership token sent as
+  // `browserSignature` to happy-milo-core. Never include this in any API
+  // response reachable from the browser (owner or moderator) — routes
+  // that return TwitchSessionRow-shaped JSON must list fields explicitly
+  // and omit this one.
+  browser_signature: string;
   status: SessionStatus;
   status_detail: string | null;
   disconnect_requested: boolean;
@@ -39,6 +45,7 @@ export interface TwitchSessionEventRow {
   message_type: "image" | "emoji";
   success: boolean;
   error_message: string | null;
+  wall_message_id: number | null;
   created_at: string;
 }
 

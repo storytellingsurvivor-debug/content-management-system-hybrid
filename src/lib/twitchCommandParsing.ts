@@ -1,7 +1,6 @@
 import emojiRegex from "emoji-regex";
 
 const BORDER_TYPE = "solid";
-const BROWSER_SIGNATURE = "twitch-bot-command";
 
 const emojiRe = emojiRegex();
 
@@ -52,17 +51,18 @@ interface HopeWallBodyInput extends CommandPayload {
   avatarUrl?: string;
 }
 
+// happyWallId and browserSignature are intentionally NOT set here — the
+// relay route (/api/twitch/sessions/[token]/relay) always overrides both
+// server-side from the session's own DB row, since browserSignature is a
+// per-session secret the browser must never get to choose.
 export function buildHopeWallBody(
-  happyWallId: string,
   payload: HopeWallBodyInput,
 ): Record<string, unknown> {
   const body: Record<string, unknown> = {
-    happyWallId,
     pseudo: payload.display,
     content: payload.content,
     type: payload.type,
     border_type: BORDER_TYPE,
-    browserSignature: BROWSER_SIGNATURE,
   };
   if (payload.type === "image" && payload.avatarUrl) body.url = payload.avatarUrl;
   if (payload.type === "emoji") body.emoji = payload.display;
@@ -86,6 +86,7 @@ export interface PostResult {
   ok: boolean;
   status?: number;
   errorMessage?: string;
+  messageId?: number | null;
 }
 
 export async function postToHopeWall(
@@ -131,7 +132,7 @@ export async function relayToHopeWall(
     if (!res.ok || data.errorMessage) {
       return { ok: false, errorMessage: data.errorMessage ?? data.error };
     }
-    if (data.ok) return { ok: true };
+    if (data.ok) return { ok: true, messageId: data.messageId ?? null };
     return {
       ok: false,
       status: data.status,

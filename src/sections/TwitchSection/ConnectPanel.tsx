@@ -37,6 +37,7 @@ export function ConnectPanel({ channel }: ConnectPanelProps) {
   const [credentialsError, setCredentialsError] = useState<string | null>(
     null,
   );
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const {
     status,
@@ -134,6 +135,14 @@ export function ConnectPanel({ channel }: ConnectPanelProps) {
       <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
         Handled messages
       </Typography>
+      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+        Deleting removes the message from the wall, not just this list.
+      </Typography>
+      {deleteError && (
+        <Alert severity="error" sx={{ mb: 1.5 }}>
+          {deleteError}
+        </Alert>
+      )}
       {events.length === 0 ? (
         <Typography color="text.secondary" variant="body2">
           Nothing yet.
@@ -149,7 +158,11 @@ export function ConnectPanel({ channel }: ConnectPanelProps) {
                   edge="end"
                   aria-label="delete"
                   size="small"
-                  onClick={() => deleteEvent(event.id)}
+                  onClick={async () => {
+                    setDeleteError(null);
+                    const error = await deleteEvent(event.id);
+                    if (error) setDeleteError(error);
+                  }}
                 >
                   <DeleteIcon fontSize="small" />
                 </IconButton>

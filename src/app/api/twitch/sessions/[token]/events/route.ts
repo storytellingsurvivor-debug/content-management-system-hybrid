@@ -16,6 +16,8 @@ export async function POST(
   const success = Boolean(body.success);
   const errorMessage =
     typeof body.error_message === "string" ? body.error_message : null;
+  const wallMessageId =
+    typeof body.wall_message_id === "number" ? body.wall_message_id : null;
 
   if (!twitchUsername || !rawMessage) {
     return Response.json(
@@ -35,14 +37,15 @@ export async function POST(
   const [event] = (await sql`
     insert into session_events (
       session_id, twitch_username, display_name, raw_message, content,
-      message_type, success, error_message
+      message_type, success, error_message, wall_message_id
     )
     values (
       ${session.id}, ${twitchUsername}, ${displayName || twitchUsername},
-      ${rawMessage}, ${content}, ${messageType}, ${success}, ${errorMessage}
+      ${rawMessage}, ${content}, ${messageType}, ${success}, ${errorMessage},
+      ${wallMessageId}
     )
     returning id, session_id, twitch_username, display_name, raw_message,
-      content, message_type, success, error_message, created_at
+      content, message_type, success, error_message, wall_message_id, created_at
   `) as TwitchSessionEventRow[];
 
   return Response.json({ event }, { status: 201 });

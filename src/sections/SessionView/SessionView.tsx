@@ -52,6 +52,7 @@ export function SessionView({ token }: SessionViewProps) {
   const [triggerDraft, setTriggerDraft] = useState("");
   const [isEditingTrigger, setIsEditingTrigger] = useState(false);
   const [isSavingTrigger, setIsSavingTrigger] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const isEditingRef = useRef(false);
   isEditingRef.current = isEditingTrigger;
@@ -103,11 +104,16 @@ export function SessionView({ token }: SessionViewProps) {
   };
 
   const deleteEvent = async (eventId: number) => {
+    setDeleteError(null);
     const res = await fetch(
       `/api/twitch/sessions/${token}/events/${eventId}`,
       { method: "DELETE" },
     );
-    if (!res.ok) return;
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      setDeleteError(data?.error ?? "Could not delete this message.");
+      return;
+    }
     setData((prev) =>
       prev
         ? { ...prev, events: prev.events.filter((e) => e.id !== eventId) }
@@ -190,6 +196,14 @@ export function SessionView({ token }: SessionViewProps) {
         <Typography variant="subtitle1" sx={{ mb: 1 }}>
           Handled messages
         </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+          Deleting removes the message from the wall, not just this list.
+        </Typography>
+        {deleteError && (
+          <Alert severity="error" sx={{ mb: 1.5 }}>
+            {deleteError}
+          </Alert>
+        )}
         {events.length === 0 ? (
           <Typography color="text.secondary" variant="body2">
             Nothing yet.

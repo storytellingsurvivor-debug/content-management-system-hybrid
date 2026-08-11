@@ -221,7 +221,7 @@ export function useTwitchBotSession(channel: TwitchChannelRow) {
             avatarUrl = await fetchAvatarUrl(msg.userInfo.userName);
           }
 
-          const body = buildHopeWallBody(channel.happy_wall_id, {
+          const body = buildHopeWallBody({
             ...payload,
             avatarUrl,
           });
@@ -254,6 +254,7 @@ export function useTwitchBotSession(channel: TwitchChannelRow) {
                 message_type: payload.type,
                 success: result.ok,
                 error_message: result.ok ? null : result.errorMessage,
+                wall_message_id: result.ok ? (result.messageId ?? null) : null,
               }),
             });
           }
@@ -293,15 +294,19 @@ export function useTwitchBotSession(channel: TwitchChannelRow) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const deleteEvent = useCallback(async (eventId: number) => {
+  const deleteEvent = useCallback(async (eventId: number): Promise<string | null> => {
     const shareToken = shareTokenRef.current;
-    if (!shareToken) return;
+    if (!shareToken) return "No active session.";
     const res = await fetch(
       `/api/twitch/sessions/${shareToken}/events/${eventId}`,
       { method: "DELETE" },
     );
-    if (!res.ok) return;
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      return data?.error ?? "Could not delete this message.";
+    }
     setEvents((prev) => prev.filter((e) => e.id !== eventId));
+    return null;
   }, []);
 
   return {

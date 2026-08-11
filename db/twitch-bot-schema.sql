@@ -40,6 +40,13 @@ create table if not exists sessions (
   channel_id uuid not null references channels(id) on delete cascade,
   trigger_command text not null default '!happy_wall',
   success_message text not null default 'sent to the wall!',
+  -- Per-session ownership token sent as `browserSignature` on every wall
+  -- post from this session, and required to delete those messages later
+  -- (see happy-milo-core's DELETE /happy-wall/messages). Deliberately
+  -- random per session rather than a shared constant — a fixed constant
+  -- committed to this public repo would let anyone delete any
+  -- bot-posted message on any wall.
+  browser_signature text not null default encode(gen_random_bytes(16), 'hex'),
   status session_status not null default 'idle',
   status_detail text,
   -- Set by the public session page when a moderator clicks "Disconnect";
@@ -50,6 +57,10 @@ create table if not exists sessions (
   connected_at timestamptz,
   disconnected_at timestamptz
 );
+
+-- Safe to re-run against a DB created before browser_signature existed.
+alter table sessions add column if not exists browser_signature text
+  not null default encode(gen_random_bytes(16), 'hex');
 
 create index if not exists sessions_channel_id_idx on sessions(channel_id);
 
@@ -63,7 +74,15 @@ create table if not exists session_events (
   message_type text not null check (message_type in ('image', 'emoji')),
   success boolean not null,
   error_message text,
+  -- id of the created happy_wall_message row, when the post succeeded —
+  -- needed to actually delete it from the wall later. Null for failed
+  -- posts (nothing was created) or events logged before this column
+  -- existed.
+  wall_message_id bigint,
   created_at timestamptz not null default now()
 );
+
+-- Safe to re-run against a DB created before wall_message_id existed.
+alter table session_events add column if not exists wall_message_id bigint;
 
 create index if not exists session_events_session_id_idx on session_events(session_id, created_at desc);
