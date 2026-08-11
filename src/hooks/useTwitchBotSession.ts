@@ -9,7 +9,7 @@ import {
 import {
   buildCommandPayload,
   buildHopeWallBody,
-  postToHopeWall,
+  relayToHopeWall,
 } from "@/lib/twitchCommandParsing";
 import type {
   SessionStatus,
@@ -225,7 +225,9 @@ export function useTwitchBotSession(channel: TwitchChannelRow) {
             ...payload,
             avatarUrl,
           });
-          const result = await postToHopeWall(channel.target_url, body);
+          const result = shareTokenRef.current
+            ? await relayToHopeWall(shareTokenRef.current, body)
+            : { ok: false, errorMessage: "No active session." };
 
           if (result.ok) {
             await chatClient.say(

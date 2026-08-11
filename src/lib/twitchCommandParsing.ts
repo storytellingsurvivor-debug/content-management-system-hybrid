@@ -69,7 +69,7 @@ export function buildHopeWallBody(
   return body;
 }
 
-function parseApiErrorMessage(status: number, errorText: string): string {
+export function parseApiErrorMessage(status: number, errorText: string): string {
   let errorMessage = `${status}: ${errorText}`;
   try {
     const body = JSON.parse(errorText);
@@ -104,6 +104,38 @@ export async function postToHopeWall(
       ok: false,
       status: res.status,
       errorMessage: parseApiErrorMessage(res.status, errorText),
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      errorMessage: err instanceof Error ? err.message : "Unknown error.",
+    };
+  }
+}
+
+// Goes through /api/twitch/sessions/[token]/relay instead of fetching the
+// channel's target_url directly from the browser — many wall endpoints
+// (e.g. happy-milo.com's) send no CORS headers, since they were only ever
+// built for server-to-server calls from join-milo-bot.
+export async function relayToHopeWall(
+  shareToken: string,
+  body: Record<string, unknown>,
+): Promise<PostResult> {
+  try {
+    const res = await fetch(`/api/twitch/sessions/${shareToken}/relay`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok || data.errorMessage) {
+      return { ok: false, errorMessage: data.errorMessage ?? data.error };
+    }
+    if (data.ok) return { ok: true };
+    return {
+      ok: false,
+      status: data.status,
+      errorMessage: parseApiErrorMessage(data.status, data.body ?? ""),
     };
   } catch (err) {
     return {
