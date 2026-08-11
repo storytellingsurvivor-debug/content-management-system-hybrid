@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
-  allowedDevOrigins: ["10.10.1.211"],
+  allowedDevOrigins: ["10.10.1.211", "192.168.1.75"],
   // Emit a noindex header on every response of the admin.happy-milo CMS,
   // including API/webhook routes and non-HTML responses. Scoped to this host
   // only, so the public happy-milo.com site is unaffected.
