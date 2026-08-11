@@ -129,9 +129,33 @@ export function useTwitchBotSession(channel: TwitchChannelRow) {
         setTriggerCommand(session.trigger_command);
         setShareUrl(`${window.location.origin}/session/${session.share_token}`);
 
-        const validated = await validateTwitchToken(accessToken);
+        // The pasted access token may already be expired (e.g. reused from
+        // join-milo-bot's .env, last minted whenever that bot last ran) —
+        // try it as-is first, and if Twitch rejects it, refresh once via
+        // our server-side proxy before giving up.
+        let workingAccessToken = accessToken;
+        let validated;
+        try {
+          validated = await validateTwitchToken(workingAccessToken);
+        } catch {
+          const refreshRes = await fetch("/api/twitch/token/refresh", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refresh_token: refreshToken }),
+          });
+          const refreshData = await refreshRes.json();
+          if (!refreshRes.ok) {
+            throw new Error(
+              refreshData.error ??
+                "Access token was invalid/expired and refreshing it failed.",
+            );
+          }
+          workingAccessToken = refreshData.access_token;
+          validated = await validateTwitchToken(workingAccessToken);
+        }
+
         const authProvider = new BrowserTwitchAuthProvider(clientId, {
-          accessToken,
+          accessToken: workingAccessToken,
           refreshToken,
           scope: validated.scopes,
           expiresIn: null,
