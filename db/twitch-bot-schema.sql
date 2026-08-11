@@ -20,13 +20,16 @@ create table if not exists channels (
   last_used_at timestamptz
 );
 
-create type session_status as enum (
-  'idle',
-  'connecting',
-  'connected',
-  'disconnected',
-  'error'
-);
+do $$ begin
+  create type session_status as enum (
+    'idle',
+    'connecting',
+    'connected',
+    'disconnected',
+    'error'
+  );
+exception when duplicate_object then null;
+end $$;
 
 create table if not exists sessions (
   id uuid primary key default gen_random_uuid(),
