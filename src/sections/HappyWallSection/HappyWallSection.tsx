@@ -10,6 +10,7 @@ import { MessagesPanel } from "./MessagesPanel";
 import { HappyBoxPanel } from "./HappyBoxPanel";
 import { BubblesChoreographyPanel } from "./BubblesChoreographyPanel";
 import { WallAnalyticsPanel } from "./WallAnalyticsPanel";
+import { TwitchBotPanel } from "./TwitchBotPanel";
 
 interface HappyWallSectionProps {
   isConnected: boolean;
@@ -20,7 +21,12 @@ interface HappyWallSectionProps {
   table: string;
 }
 
-type WallSubTab = "walls" | "happyBox" | "choreography" | "analytics";
+type WallSubTab =
+  | "walls"
+  | "happyBox"
+  | "choreography"
+  | "analytics"
+  | "twitchBot";
 
 export function HappyWallSection({
   isConnected,
@@ -61,6 +67,7 @@ export function HappyWallSection({
           <Tab label="Happy Box" value="happyBox" />
           <Tab label="Bubbles choreography" value="choreography" />
           <Tab label="Analytics" value="analytics" />
+          <Tab label="Twitch bot" value="twitchBot" />
         </Tabs>
       </Box>
 
@@ -116,6 +123,8 @@ export function HappyWallSection({
           table={table}
         />
       )}
+
+      {subTab === "twitchBot" && <TwitchBotPanel />}
     </>
   );
 }

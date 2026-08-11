@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Container, Typography } from "@mui/material";
-import { ChannelForm } from "./ChannelForm";
-import { ChannelHistory } from "./ChannelHistory";
-import { ConnectPanel } from "./ConnectPanel";
+import { Box } from "@mui/material";
+import { ChannelForm } from "@/sections/TwitchSection/ChannelForm";
+import { ChannelHistory } from "@/sections/TwitchSection/ChannelHistory";
+import { ConnectPanel } from "@/sections/TwitchSection/ConnectPanel";
 import type { TwitchChannelRow } from "@/types/twitchBot";
 
-export function TwitchSection() {
+export function TwitchBotPanel() {
   const [channels, setChannels] = useState<TwitchChannelRow[]>([]);
   const [selectedChannel, setSelectedChannel] =
     useState<TwitchChannelRow | null>(null);
@@ -26,11 +26,7 @@ export function TwitchSection() {
   }, []);
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
-      <Typography variant="h4" sx={{ mb: 3 }}>
-        Twitch bot
-      </Typography>
-
+    <Box>
       <ChannelForm
         onCreated={(channel) => setChannels((prev) => [channel, ...prev])}
       />
@@ -44,6 +40,6 @@ export function TwitchSection() {
       {selectedChannel && (
         <ConnectPanel key={selectedChannel.id} channel={selectedChannel} />
       )}
-    </Container>
+    </Box>
   );
 }
