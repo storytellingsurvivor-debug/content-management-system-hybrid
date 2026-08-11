@@ -7,6 +7,7 @@ import {
   ListItem,
   ListItemText,
   Paper,
+  Stack,
   Typography,
 } from "@mui/material";
 import type { TwitchChannelRow } from "@/types/twitchBot";
@@ -15,12 +16,14 @@ interface ChannelHistoryProps {
   channels: TwitchChannelRow[];
   selectedChannelId: string | null;
   onConnect: (channel: TwitchChannelRow) => void;
+  onDelete: (channel: TwitchChannelRow) => void;
 }
 
 export function ChannelHistory({
   channels,
   selectedChannelId,
   onConnect,
+  onDelete,
 }: ChannelHistoryProps) {
   return (
     <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
@@ -38,14 +41,32 @@ export function ChannelHistory({
               key={channel.id}
               divider
               secondaryAction={
-                <Button
-                  variant={
-                    channel.id === selectedChannelId ? "contained" : "outlined"
-                  }
-                  onClick={() => onConnect(channel)}
-                >
-                  Connect
-                </Button>
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    variant={
+                      channel.id === selectedChannelId
+                        ? "contained"
+                        : "outlined"
+                    }
+                    onClick={() => onConnect(channel)}
+                  >
+                    Connect
+                  </Button>
+                  <Button
+                    color="error"
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `Delete channel "${channel.name}"? This also removes its session/message history.`,
+                        )
+                      ) {
+                        onDelete(channel);
+                      }
+                    }}
+                  >
+                    Delete
+                  </Button>
+                </Stack>
               }
             >
               <ListItemText

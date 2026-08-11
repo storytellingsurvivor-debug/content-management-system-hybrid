@@ -293,6 +293,17 @@ export function useTwitchBotSession(channel: TwitchChannelRow) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const deleteEvent = useCallback(async (eventId: number) => {
+    const shareToken = shareTokenRef.current;
+    if (!shareToken) return;
+    const res = await fetch(
+      `/api/twitch/sessions/${shareToken}/events/${eventId}`,
+      { method: "DELETE" },
+    );
+    if (!res.ok) return;
+    setEvents((prev) => prev.filter((e) => e.id !== eventId));
+  }, []);
+
   return {
     status,
     statusDetail,
@@ -301,6 +312,7 @@ export function useTwitchBotSession(channel: TwitchChannelRow) {
     events,
     isBusy,
     connect,
+    deleteEvent,
     disconnect,
   };
 }

@@ -7,6 +7,7 @@ import {
   Button,
   Chip,
   Container,
+  IconButton,
   List,
   ListItem,
   ListItemText,
@@ -15,6 +16,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
 import type {
   SessionStatus,
   TwitchSessionEventRow,
@@ -100,6 +102,19 @@ export function SessionView({ token }: SessionViewProps) {
     });
   };
 
+  const deleteEvent = async (eventId: number) => {
+    const res = await fetch(
+      `/api/twitch/sessions/${token}/events/${eventId}`,
+      { method: "DELETE" },
+    );
+    if (!res.ok) return;
+    setData((prev) =>
+      prev
+        ? { ...prev, events: prev.events.filter((e) => e.id !== eventId) }
+        : prev,
+    );
+  };
+
   if (notFound) {
     return (
       <Container maxWidth="sm" sx={{ py: 8 }}>
@@ -182,13 +197,26 @@ export function SessionView({ token }: SessionViewProps) {
         ) : (
           <List dense disablePadding sx={{ maxHeight: 420, overflowY: "auto" }}>
             {events.map((event) => (
-              <ListItem key={event.id} divider>
+              <ListItem
+                key={event.id}
+                divider
+                secondaryAction={
+                  <IconButton
+                    edge="end"
+                    aria-label="delete"
+                    size="small"
+                    onClick={() => deleteEvent(event.id)}
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                }
+              >
                 <ListItemText
-                  primary={`${event.display_name}: ${event.raw_message}`}
+                  primary={`${event.display_name}: ${event.content || "(no content)"}`}
                   secondary={
                     event.success
-                      ? "sent"
-                      : `failed — ${event.error_message ?? "unknown error"}`
+                      ? `sent · "${event.raw_message}"`
+                      : `failed — ${event.error_message ?? "unknown error"} · "${event.raw_message}"`
                   }
                   slotProps={{
                     secondary: {

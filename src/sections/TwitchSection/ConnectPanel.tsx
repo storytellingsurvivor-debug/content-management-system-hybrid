@@ -6,6 +6,7 @@ import {
   Box,
   Button,
   Chip,
+  IconButton,
   List,
   ListItem,
   ListItemText,
@@ -13,6 +14,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { useTwitchBotSession } from "@/hooks/useTwitchBotSession";
 import type { SessionStatus, TwitchChannelRow } from "@/types/twitchBot";
 
@@ -44,6 +46,7 @@ export function ConnectPanel({ channel }: ConnectPanelProps) {
     events,
     isBusy,
     connect,
+    deleteEvent,
     disconnect,
   } = useTwitchBotSession(channel);
 
@@ -138,13 +141,26 @@ export function ConnectPanel({ channel }: ConnectPanelProps) {
       ) : (
         <List dense disablePadding sx={{ maxHeight: 320, overflowY: "auto" }}>
           {events.map((event) => (
-            <ListItem key={event.id} divider>
+            <ListItem
+              key={event.id}
+              divider
+              secondaryAction={
+                <IconButton
+                  edge="end"
+                  aria-label="delete"
+                  size="small"
+                  onClick={() => deleteEvent(event.id)}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              }
+            >
               <ListItemText
-                primary={`${event.display_name}: ${event.raw_message}`}
+                primary={`${event.display_name}: ${event.content || "(no content)"}`}
                 secondary={
                   event.success
-                    ? "sent"
-                    : `failed — ${event.error_message ?? "unknown error"}`
+                    ? `sent · "${event.raw_message}"`
+                    : `failed — ${event.error_message ?? "unknown error"} · "${event.raw_message}"`
                 }
                 slotProps={{
                   secondary: {

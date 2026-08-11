@@ -10,9 +10,9 @@ interface ChannelFormProps {
 
 const EMPTY_FORM = {
   name: "",
-  twitch_channel: "",
-  happy_wall_id: "",
-  target_url: "",
+  twitch_channel: "yesromae",
+  happy_wall_id: "39",
+  target_url: "https://www.happy-milo.com/en/happy-wall/messages",
 };
 
 export function ChannelForm({ onCreated }: ChannelFormProps) {

@@ -35,6 +35,16 @@ export function TwitchBotPanel() {
         channels={channels}
         selectedChannelId={selectedChannel?.id ?? null}
         onConnect={setSelectedChannel}
+        onDelete={async (channel) => {
+          const res = await fetch(`/api/twitch/channels/${channel.id}`, {
+            method: "DELETE",
+          });
+          if (!res.ok) return;
+          setChannels((prev) => prev.filter((c) => c.id !== channel.id));
+          setSelectedChannel((prev) =>
+            prev?.id === channel.id ? null : prev,
+          );
+        }}
       />
 
       {selectedChannel && (
