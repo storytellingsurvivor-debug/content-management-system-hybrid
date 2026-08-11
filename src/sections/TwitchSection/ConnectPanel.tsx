@@ -11,7 +11,6 @@ import {
   ListItemText,
   Paper,
   Stack,
-  TextField,
   Typography,
 } from "@mui/material";
 import { useTwitchBotSession } from "@/hooks/useTwitchBotSession";
@@ -33,9 +32,9 @@ const STATUS_COLORS: Record<
 };
 
 export function ConnectPanel({ channel }: ConnectPanelProps) {
-  const [clientId, setClientId] = useState("");
-  const [accessToken, setAccessToken] = useState("");
-  const [refreshToken, setRefreshToken] = useState("");
+  const [credentialsError, setCredentialsError] = useState<string | null>(
+    null,
+  );
 
   const {
     status,
@@ -48,8 +47,22 @@ export function ConnectPanel({ channel }: ConnectPanelProps) {
     disconnect,
   } = useTwitchBotSession(channel);
 
-  const canConnect =
-    clientId.trim() && accessToken.trim() && refreshToken.trim() && !isBusy;
+  const handleConnect = async () => {
+    setCredentialsError(null);
+    const res = await fetch("/api/twitch/credentials");
+    const data = await res.json();
+    if (!res.ok) {
+      setCredentialsError(
+        data.error ?? "Could not load Twitch credentials from the server.",
+      );
+      return;
+    }
+    await connect({
+      clientId: data.client_id,
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+    });
+  };
 
   return (
     <Paper elevation={2} sx={{ p: 3 }}>
@@ -61,48 +74,18 @@ export function ConnectPanel({ channel }: ConnectPanelProps) {
       </Box>
 
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Kept in this tab&rsquo;s memory only — never saved anywhere. Get these
-        from your own Twitch OAuth flow for the bot&rsquo;s account
-        (chat:read + chat:edit scopes).
+        Uses the bot account&rsquo;s Twitch credentials configured on the
+        server (TWITCH_CLIENT_ID / TWITCH_ACCESS_TOKEN / TWITCH_REFRESH_TOKEN)
+        — nothing to fill in here.
       </Typography>
-
-      <Stack spacing={2} sx={{ mb: 2, maxWidth: 480 }}>
-        <TextField
-          label="Twitch Client ID"
-          value={clientId}
-          onChange={(e) => setClientId(e.target.value)}
-          disabled={status === "connected" || status === "connecting"}
-          fullWidth
-        />
-        <TextField
-          label="Access token"
-          type="password"
-          value={accessToken}
-          onChange={(e) => setAccessToken(e.target.value)}
-          disabled={status === "connected" || status === "connecting"}
-          fullWidth
-        />
-        <TextField
-          label="Refresh token"
-          type="password"
-          value={refreshToken}
-          onChange={(e) => setRefreshToken(e.target.value)}
-          disabled={status === "connected" || status === "connecting"}
-          fullWidth
-        />
-      </Stack>
 
       <Stack direction="row" spacing={1.5} sx={{ mb: 2 }}>
         <Button
           variant="contained"
-          disabled={!canConnect || status === "connected"}
-          onClick={() =>
-            connect({
-              clientId: clientId.trim(),
-              accessToken: accessToken.trim(),
-              refreshToken: refreshToken.trim(),
-            })
+          disabled={
+            isBusy || status === "connected" || status === "connecting"
           }
+          onClick={handleConnect}
         >
           {status === "connecting" ? "Connecting..." : "Connect"}
         </Button>
@@ -114,6 +97,12 @@ export function ConnectPanel({ channel }: ConnectPanelProps) {
           Disconnect
         </Button>
       </Stack>
+
+      {credentialsError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {credentialsError}
+        </Alert>
+      )}
 
       {statusDetail && <Alert severity="error" sx={{ mb: 2 }}>{statusDetail}</Alert>}
 
