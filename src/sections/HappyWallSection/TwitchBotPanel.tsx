@@ -11,6 +11,8 @@ export function TwitchBotPanel() {
   const [channels, setChannels] = useState<TwitchChannelRow[]>([]);
   const [selectedChannel, setSelectedChannel] =
     useState<TwitchChannelRow | null>(null);
+  const [editingChannel, setEditingChannel] =
+    useState<TwitchChannelRow | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -28,13 +30,28 @@ export function TwitchBotPanel() {
   return (
     <Box>
       <ChannelForm
+        editingChannel={editingChannel}
+        onCancelEdit={() => setEditingChannel(null)}
         onCreated={(channel) => setChannels((prev) => [channel, ...prev])}
+        onUpdated={(channel) => {
+          setChannels((prev) =>
+            prev.map((c) => (c.id === channel.id ? channel : c)),
+          );
+          setSelectedChannel((prev) =>
+            prev?.id === channel.id ? channel : prev,
+          );
+          setEditingChannel(null);
+        }}
       />
 
       <ChannelHistory
         channels={channels}
         selectedChannelId={selectedChannel?.id ?? null}
-        onConnect={setSelectedChannel}
+        onConnect={(channel) => {
+          setEditingChannel(null);
+          setSelectedChannel(channel);
+        }}
+        onEdit={(channel) => setEditingChannel(channel)}
         onDelete={async (channel) => {
           const res = await fetch(`/api/twitch/channels/${channel.id}`, {
             method: "DELETE",
@@ -42,6 +59,9 @@ export function TwitchBotPanel() {
           if (!res.ok) return;
           setChannels((prev) => prev.filter((c) => c.id !== channel.id));
           setSelectedChannel((prev) =>
+            prev?.id === channel.id ? null : prev,
+          );
+          setEditingChannel((prev) =>
             prev?.id === channel.id ? null : prev,
           );
         }}

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Alert,
+  Avatar,
   Box,
   Button,
   Chip,
@@ -10,6 +11,7 @@ import {
   IconButton,
   List,
   ListItem,
+  ListItemAvatar,
   ListItemText,
   Paper,
   Stack,
@@ -225,6 +227,11 @@ export function SessionView({ token }: SessionViewProps) {
                   </IconButton>
                 }
               >
+                {event.image_url && (
+                  <ListItemAvatar>
+                    <Avatar src={event.image_url} variant="rounded" />
+                  </ListItemAvatar>
+                )}
                 <ListItemText
                   primary={`${event.display_name}: ${event.content || "(no content)"}`}
                   secondary={

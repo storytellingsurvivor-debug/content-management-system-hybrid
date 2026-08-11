@@ -44,7 +44,8 @@ export async function GET(
 
   const events = (await sql`
     select id, session_id, twitch_username, display_name, raw_message,
-      content, message_type, success, error_message, wall_message_id, created_at
+      content, message_type, success, error_message, wall_message_id,
+      image_url, created_at
     from session_events
     where session_id = ${row.id}
     order by created_at desc

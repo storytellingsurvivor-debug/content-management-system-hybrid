@@ -1,4 +1,5 @@
 import { getSql } from "@/lib/twitchBotDb";
+import { resolveHappyWallId } from "@/lib/happyWall";
 
 // Deletes both the actual message on the live happy_wall (via
 // happy-milo-core's DELETE /happy-wall/messages, using this session's own
@@ -17,7 +18,7 @@ export async function DELETE(
 
   const sql = getSql();
   const [session] = await sql`
-    select s.id, s.browser_signature, c.target_url, c.happy_wall_id
+    select s.id, s.browser_signature, c.target_url, c.wall_url
     from sessions s
     join channels c on c.id = s.channel_id
     where s.share_token = ${token}
@@ -36,12 +37,13 @@ export async function DELETE(
 
   if (event.wall_message_id) {
     try {
+      const happyWallId = await resolveHappyWallId(session.wall_url);
       const res = await fetch(session.target_url, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messageId: event.wall_message_id,
-          happyWallId: session.happy_wall_id,
+          happyWallId,
           browserSignature: session.browser_signature,
         }),
       });

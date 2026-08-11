@@ -1,24 +1,48 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Box, Button, Paper, Stack, TextField, Typography } from "@mui/material";
 import type { TwitchChannelRow } from "@/types/twitchBot";
 
 interface ChannelFormProps {
   onCreated: (channel: TwitchChannelRow) => void;
+  onUpdated: (channel: TwitchChannelRow) => void;
+  editingChannel: TwitchChannelRow | null;
+  onCancelEdit: () => void;
 }
 
 const EMPTY_FORM = {
   name: "",
   twitch_channel: "yesromae",
-  happy_wall_id: "39",
+  wall_url: "",
   target_url: "https://www.happy-milo.com/en/happy-wall/messages",
 };
 
-export function ChannelForm({ onCreated }: ChannelFormProps) {
+function formValuesFor(channel: TwitchChannelRow | null): typeof EMPTY_FORM {
+  if (!channel) return EMPTY_FORM;
+  return {
+    name: channel.name,
+    twitch_channel: channel.twitch_channel,
+    wall_url: channel.wall_url,
+    target_url: channel.target_url,
+  };
+}
+
+export function ChannelForm({
+  onCreated,
+  onUpdated,
+  editingChannel,
+  onCancelEdit,
+}: ChannelFormProps) {
   const [values, setValues] = useState(EMPTY_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isEditing = Boolean(editingChannel);
+
+  useEffect(() => {
+    setValues(formValuesFor(editingChannel));
+    setError(null);
+  }, [editingChannel]);
 
   const setField = (key: keyof typeof EMPTY_FORM, value: string) =>
     setValues((previous) => ({ ...previous, [key]: value }));
@@ -27,17 +51,24 @@ export function ChannelForm({ onCreated }: ChannelFormProps) {
     setError(null);
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/twitch/channels", {
-        method: "POST",
+      const url = isEditing
+        ? `/api/twitch/channels/${editingChannel!.id}`
+        : "/api/twitch/channels";
+      const res = await fetch(url, {
+        method: isEditing ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Could not add channel.");
-      onCreated(data.channel as TwitchChannelRow);
-      setValues(EMPTY_FORM);
+      if (!res.ok) throw new Error(data.error ?? "Could not save channel.");
+      if (isEditing) {
+        onUpdated(data.channel as TwitchChannelRow);
+      } else {
+        onCreated(data.channel as TwitchChannelRow);
+        setValues(EMPTY_FORM);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not add channel.");
+      setError(err instanceof Error ? err.message : "Could not save channel.");
     } finally {
       setIsSubmitting(false);
     }
@@ -46,7 +77,7 @@ export function ChannelForm({ onCreated }: ChannelFormProps) {
   return (
     <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
       <Typography variant="h6" sx={{ mb: 2 }}>
-        Add a Twitch channel
+        {isEditing ? `Edit "${editingChannel!.name}"` : "Add a Twitch channel"}
       </Typography>
       <Stack spacing={2}>
         <TextField
@@ -64,27 +95,37 @@ export function ChannelForm({ onCreated }: ChannelFormProps) {
           fullWidth
         />
         <TextField
-          label="Happy Wall id"
-          value={values.happy_wall_id}
-          onChange={(e) => setField("happy_wall_id", e.target.value)}
+          label="Happy Wall URL"
+          placeholder="https://www.happy-milo.com/en/happy-wall/some-slug"
+          value={values.wall_url}
+          onChange={(e) => setField("wall_url", e.target.value)}
           fullWidth
         />
         <TextField
-          label="Target URL"
+          label="Messages API URL"
           placeholder="https://..."
           value={values.target_url}
           onChange={(e) => setField("target_url", e.target.value)}
           fullWidth
         />
         {error && <Alert severity="error">{error}</Alert>}
-        <Box>
+        <Box sx={{ display: "flex", gap: 1.5 }}>
           <Button
             variant="contained"
             disabled={isSubmitting}
             onClick={handleSubmit}
           >
-            {isSubmitting ? "Adding..." : "Add channel"}
+            {isSubmitting
+              ? "Saving..."
+              : isEditing
+                ? "Save changes"
+                : "Add channel"}
           </Button>
+          {isEditing && (
+            <Button variant="outlined" onClick={onCancelEdit}>
+              Cancel
+            </Button>
+          )}
         </Box>
       </Stack>
     </Paper>

@@ -3,12 +3,14 @@
 import { useState } from "react";
 import {
   Alert,
+  Avatar,
   Box,
   Button,
   Chip,
   IconButton,
   List,
   ListItem,
+  ListItemAvatar,
   ListItemText,
   Paper,
   Stack,
@@ -168,6 +170,11 @@ export function ConnectPanel({ channel }: ConnectPanelProps) {
                 </IconButton>
               }
             >
+              {event.image_url && (
+                <ListItemAvatar>
+                  <Avatar src={event.image_url} variant="rounded" />
+                </ListItemAvatar>
+              )}
               <ListItemText
                 primary={`${event.display_name}: ${event.content || "(no content)"}`}
                 secondary={

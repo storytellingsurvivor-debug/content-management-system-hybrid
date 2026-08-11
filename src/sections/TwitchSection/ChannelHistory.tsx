@@ -16,6 +16,7 @@ interface ChannelHistoryProps {
   channels: TwitchChannelRow[];
   selectedChannelId: string | null;
   onConnect: (channel: TwitchChannelRow) => void;
+  onEdit: (channel: TwitchChannelRow) => void;
   onDelete: (channel: TwitchChannelRow) => void;
 }
 
@@ -23,6 +24,7 @@ export function ChannelHistory({
   channels,
   selectedChannelId,
   onConnect,
+  onEdit,
   onDelete,
 }: ChannelHistoryProps) {
   return (
@@ -52,6 +54,9 @@ export function ChannelHistory({
                   >
                     Connect
                   </Button>
+                  <Button variant="outlined" onClick={() => onEdit(channel)}>
+                    Edit
+                  </Button>
                   <Button
                     color="error"
                     onClick={() => {
@@ -73,7 +78,8 @@ export function ChannelHistory({
                 primary={channel.name}
                 secondary={
                   <Box component="span">
-                    #{channel.twitch_channel} · wall {channel.happy_wall_id}
+                    #{channel.twitch_channel}
+                    {channel.wall_url ? ` · ${channel.wall_url}` : " · (no wall URL set)"}
                   </Box>
                 }
               />

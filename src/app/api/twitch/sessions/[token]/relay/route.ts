@@ -1,4 +1,5 @@
 import { getSql } from "@/lib/twitchBotDb";
+import { resolveHappyWallId } from "@/lib/happyWall";
 
 // Posts a handled command's payload to the channel's target_url on behalf
 // of the browser. This exists because that POST used to happen directly
@@ -23,7 +24,7 @@ export async function POST(
 
   const sql = getSql();
   const [row] = await sql`
-    select c.target_url, c.happy_wall_id, s.browser_signature
+    select c.target_url, c.wall_url, s.browser_signature
     from sessions s
     join channels c on c.id = s.channel_id
     where s.share_token = ${token}
@@ -32,9 +33,19 @@ export async function POST(
     return Response.json({ error: "Session not found." }, { status: 404 });
   }
 
+  let happyWallId: number;
+  try {
+    happyWallId = await resolveHappyWallId(row.wall_url);
+  } catch (err) {
+    return Response.json({
+      ok: false,
+      errorMessage: err instanceof Error ? err.message : "Could not resolve wall id.",
+    });
+  }
+
   const payload = {
     ...clientPayload,
-    happyWallId: row.happy_wall_id,
+    happyWallId,
     browserSignature: row.browser_signature,
   };
 

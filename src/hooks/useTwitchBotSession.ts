@@ -255,6 +255,7 @@ export function useTwitchBotSession(channel: TwitchChannelRow) {
                 success: result.ok,
                 error_message: result.ok ? null : result.errorMessage,
                 wall_message_id: result.ok ? (result.messageId ?? null) : null,
+                image_url: payload.type === "image" ? (avatarUrl ?? null) : null,
               }),
             });
           }

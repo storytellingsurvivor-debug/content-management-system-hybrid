@@ -2,7 +2,7 @@ export interface TwitchChannelRow {
   id: string;
   name: string;
   twitch_channel: string;
-  happy_wall_id: string;
+  wall_url: string;
   target_url: string;
   created_at: string;
   last_used_at: string | null;
@@ -46,6 +46,7 @@ export interface TwitchSessionEventRow {
   success: boolean;
   error_message: string | null;
   wall_message_id: number | null;
+  image_url: string | null;
   created_at: string;
 }
 

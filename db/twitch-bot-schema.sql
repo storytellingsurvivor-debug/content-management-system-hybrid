@@ -14,11 +14,19 @@ create table if not exists channels (
   id uuid primary key default gen_random_uuid(),
   name text not null,                 -- human label, e.g. "Milo main stream"
   twitch_channel text not null,       -- Twitch login name to join, e.g. "happymilo"
-  happy_wall_id text not null,        -- target happy_wall id (as used in join-milo-bot's HAPPY_MILO_HAPPY_WALL_ID)
-  target_url text not null,           -- endpoint messages get POSTed to (TARGET_HAPPY_MILO_TARGET_URL equivalent)
+  -- Public wall page URL, e.g. "https://www.happy-milo.com/en/happy-wall/some-slug".
+  -- The numeric happy_wall_id is resolved from this URL's slug on demand
+  -- (see src/lib/happyWall.ts) rather than stored — no more manually
+  -- looking up an id.
+  wall_url text not null,
+  target_url text not null,           -- messages POST endpoint (e.g. ".../en/happy-wall/messages")
   created_at timestamptz not null default now(),
   last_used_at timestamptz
 );
+
+-- Safe to re-run against a DB created before this migration.
+alter table channels add column if not exists wall_url text not null default '';
+alter table channels drop column if exists happy_wall_id;
 
 do $$ begin
   create type session_status as enum (
@@ -79,10 +87,14 @@ create table if not exists session_events (
   -- posts (nothing was created) or events logged before this column
   -- existed.
   wall_message_id bigint,
+  -- Image URL that was actually posted (image-type messages only) — lets
+  -- the moderator see a real preview instead of just text.
+  image_url text,
   created_at timestamptz not null default now()
 );
 
--- Safe to re-run against a DB created before wall_message_id existed.
+-- Safe to re-run against a DB created before these columns existed.
 alter table session_events add column if not exists wall_message_id bigint;
+alter table session_events add column if not exists image_url text;
 
 create index if not exists session_events_session_id_idx on session_events(session_id, created_at desc);
