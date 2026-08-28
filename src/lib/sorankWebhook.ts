@@ -154,7 +154,7 @@ export function mapSorankArticle(
 // The `blog` columns that cannot be null. If a payload maps any of these to a
 // falsy value the DB insert would raise a bare 500 with no clue why — so we
 // stop first and report which keys actually arrived.
-const REQUIRED_COLUMNS: (keyof SorankBlogRow)[] = ["slug", "content"];
+const REQUIRED_COLUMNS: (keyof SorankBlogRow)[] = ["title", "slug", "content"];
 
 // Shared POST handler for every Sorank route. Differences between routes are
 // just the Supabase client, the brand defaults, and a log prefix.
@@ -192,6 +192,11 @@ export async function handleSorankWebhook(
   }
 
   const payload = body as Record<string, unknown>;
+
+  // Log the full delivery so the exact Sorank field names/shapes are visible in
+  // the Netlify function logs — the payload is public article content, and this
+  // is the only way to confirm the mapping without reaching Sorank directly.
+  console.log(`[${logPrefix}] raw payload:`, JSON.stringify(payload));
 
   const { data: maxRows, error: maxError } = await supabase
     .from("blog")

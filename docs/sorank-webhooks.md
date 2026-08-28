@@ -35,9 +35,11 @@ project's webhook URL at the matching route.
 - **`400 { "error": ... }`** — the body was not a JSON object (empty / wrong
   content-type). Guards Sorank's "Test" button when it sends no article.
 - **`422 { "error", "receivedKeys", "mapped" }`** — the payload parsed but
-  nothing mapped onto the required `slug` / `content` columns. `receivedKeys`
-  lists the keys Sorank actually sent, so the mapper can be pointed at them.
-  This turns an otherwise opaque NOT NULL `500` into a self-describing response.
+  nothing mapped onto the required `title` / `slug` / `content` columns (all
+  three are NOT NULL in the `blog` table). `receivedKeys` lists the keys Sorank
+  actually sent, so the mapper can be pointed at them. This turns an otherwise
+  opaque NOT NULL `500` into a self-describing response. The full payload is also
+  logged (`[sorank/...] raw payload: …`) for the same reason.
 - **`500 { "error", "mapped" }`** — the Supabase insert itself failed. `mapped`
   is the row we tried to insert. Also logged with a `[sorank/...]` prefix.
 
