@@ -54,50 +54,60 @@ not verify one today. The path itself is the shared secret (as with the
 
 ## Field mapping
 
-Sorank documents that the payload carries the article's **title, slug, full HTML
-body, meta description, image(s) and language** ("and more"). The exact key
-names are not contractually pinned and have varied between payload versions, so
-`src/lib/sorankWebhook.ts` reads each value from its documented key with a few
-well-known aliases as fallback rather than trusting one spelling.
+Sorank wraps the article in an **envelope**: `event`, `delivery_id` and
+`timestamp` at the top level, with the article fields nested under an `article`
+object. `src/lib/sorankWebhook.ts` reads from `article` (and falls back to the
+top level for a legacy flat payload), tolerating a couple of aliases per field.
 
-| `blog` column | Read from (first match wins) |
-| ------------- | ---------------------------- |
-| `title` | `title`, `name` |
+| `blog` column | Read from Sorank `article.*` (first match wins) |
+| ------------- | ----------------------------------------------- |
+| `title` | `title` |
 | `slug` | `slug` |
-| `content` | `htmlContent`, `contentHtml`, `content_html`, `html`, `body`, `content`, `content_markdown` |
-| `cover_image_url` | `coverImage`, `featuredImage`, `heroImageUrl`, `image`, `imageUrl`, or the first URL in `images[]` (string or `{ url }`) |
-| `language` | `language`, `languageCode`, `locale`, `lang` |
-| `seo_keywords` | `keywords` / `seoKeywords` / `tags` — array joined with `, ` or a string as-is |
-| `meta_description` | `metaDescription`, `description` |
-| `created_at` | `createdAt`, `publishedAt`, `date` — falls back to `now()` if absent |
+| `content` | `content` (full HTML body) |
+| `cover_image_url` | `featured_image.url`, else first URL in `images[]` (each `{ url, alt, placement }`) |
+| `language` | `language` — BCP-47 (`fr-FR`) normalised to the primary subtag (`fr`) to match existing rows |
+| `seo_keywords` | `focus_keyphrase`, else `keyword` |
+| `meta_description` | `meta_description` |
+| `read_time_in_minutes` | derived from `word_count` (÷200 wpm, min 1); `5` if absent |
+| `created_at` | top-level `timestamp` (falls back to `now()`) |
 
 Fixed per route (not from the payload): `author_name`, `author_image_url`,
-`category` (the brand defaults above), `read_time_in_minutes: 5`, and
-`is_live: false` — new articles land unpublished for review. `id` is set to
-`count(blog) + 1`, matching the `babylovegrowth` routes.
+`category` (the brand defaults above) and `is_live: false` — new articles land
+unpublished for review. `id` is `max(id) + 1`.
 
-### Example payload
+`event: "webhook.test"` (Sorank's connectivity probe) is acknowledged `200`
+**without** inserting, so clicking "Test" doesn't create dummy rows; only
+`event: "article.published"` (or a flat payload with no event) is ingested.
+
+### Example payload (`article.published`)
 
 ```json
 {
-  "title": "Comment demander de l'aide",
-  "slug": "comment-demander-de-l-aide",
-  "htmlContent": "<h1>Bonjour</h1><p>…</p>",
-  "metaDescription": "Un guide court et concret.",
-  "language": "fr",
-  "images": ["https://cdn.example.com/cover.webp"],
-  "keywords": ["aide", "soutien"],
-  "createdAt": "2026-08-01T10:00:00.000Z"
+  "event": "article.published",
+  "delivery_id": "11111111-2222-3333-4444-555555555555",
+  "timestamp": "2026-08-28T21:23:09.000Z",
+  "article": {
+    "id": "art_123",
+    "title": "Comment demander de l'aide",
+    "slug": "comment-demander-de-l-aide",
+    "meta_description": "Un guide court et concret.",
+    "focus_keyphrase": "demander de l'aide",
+    "content": "<h1>Bonjour</h1><p>…</p>",
+    "featured_image": { "url": "https://cdn.example.com/cover.webp", "alt": "…", "placement": "top" },
+    "images": [],
+    "word_count": 800,
+    "keyword": "demander de l'aide",
+    "language": "fr-FR"
+  }
 }
 ```
 
 ## Assumptions & follow-ups
 
-The exact Sorank key names above are taken from the public documentation plus the
-tolerant aliasing; confirm them against a real delivery and prune the mapper to
-the keys Sorank actually sends. Same open items as `babylovegrowth`:
-`read_time_in_minutes` is a fixed `5` (could be derived from body length), and
-`is_live` stays `false` by design.
+The mapping follows Sorank's documented field reference. Language is normalised
+to the primary subtag (`fr-FR` → `fr`) to align with existing rows; drop the
+normalisation if the site expects full BCP-47 tags. `is_live` stays `false` by
+design (articles are reviewed before going live).
 
 ## Check
 
@@ -105,6 +115,7 @@ the keys Sorank actually sends. Same open items as `babylovegrowth`:
 node --experimental-strip-types src/lib/sorankWebhook.check.ts
 ```
 
-Asserts the documented shape and each alias/fallback path map onto the right
-`blog` columns, and that a missing timestamp never produces a null / `"undefined"`
-`created_at`.
+Asserts the real `article.published` envelope maps onto the right `blog`
+columns, the language/read-time/cover-image helpers, the `webhook.test`
+no-insert path, `max(id)+1` id assignment, and that an unmappable article
+returns a 422 naming the received keys rather than an insert 500.
