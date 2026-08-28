@@ -148,3 +148,113 @@ export function mapSorankArticle(
     is_live: false,
   };
 }
+
+// The `blog` columns that cannot be null. If a payload maps any of these to a
+// falsy value the DB insert would raise a bare 500 with no clue why — so we
+// stop first and report which keys actually arrived.
+const REQUIRED_COLUMNS: (keyof SorankBlogRow)[] = ["slug", "content"];
+
+// Minimal shape we need from the Supabase client — typed loosely so this file
+// carries no hard dependency on @supabase types.
+interface SupabaseLike {
+  from(table: string): {
+    select(
+      columns: string,
+      options?: { count?: "exact"; head?: boolean },
+    ): {
+      order(
+        column: string,
+        options: { ascending: boolean },
+      ): { limit(n: number): Promise<{ data: unknown; error: unknown }> };
+    };
+    insert(row: unknown): Promise<{ error: unknown }>;
+  };
+}
+
+// Shared POST handler for every Sorank route. Differences between routes are
+// just the Supabase client, the brand defaults, and a log prefix.
+//
+// Hardened vs. the babylovegrowth routes on the two ways a first delivery can
+// 500 invisibly on Netlify:
+//   1. an unparseable / empty test body -> clean 400 instead of a thrown 500;
+//   2. a payload whose keys we don't map -> 422 that names the received keys,
+//      instead of a NOT NULL violation surfacing as an opaque 500.
+// The insert also uses max(id)+1 rather than count+1 so a deleted row (a gap
+// between count and the real max id) can't cause a duplicate-key 500.
+export async function handleSorankWebhook(
+  request: Request,
+  supabase: SupabaseLike,
+  brand: SorankBrand,
+  logPrefix: string,
+): Promise<Response> {
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    console.error(`[${logPrefix}] body was not valid JSON`);
+    return Response.json(
+      { error: "Request body must be valid JSON." },
+      { status: 400 },
+    );
+  }
+
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    console.error(`[${logPrefix}] body was not a JSON object:`, body);
+    return Response.json(
+      { error: "Request body must be a JSON object." },
+      { status: 400 },
+    );
+  }
+
+  const payload = body as Record<string, unknown>;
+
+  const { data: maxRows, error: maxError } = await supabase
+    .from("blog")
+    .select("id")
+    .order("id", { ascending: false })
+    .limit(1);
+
+  if (maxError) {
+    console.error(`[${logPrefix}] max-id lookup failed:`, maxError);
+    return Response.json({ error: maxError }, { status: 500 });
+  }
+
+  const topId = Array.isArray(maxRows)
+    ? Number((maxRows[0] as { id?: unknown } | undefined)?.id ?? 0)
+    : 0;
+  const nextId = (Number.isFinite(topId) ? topId : 0) + 1;
+
+  const row = mapSorankArticle(payload, brand, nextId);
+
+  const missing = REQUIRED_COLUMNS.filter((column) => !row[column]);
+  if (missing.length > 0) {
+    console.error(
+      `[${logPrefix}] payload missing ${missing.join(", ")}. Received keys:`,
+      Object.keys(payload),
+    );
+    return Response.json(
+      {
+        error: `Could not map required field(s): ${missing.join(", ")}.`,
+        receivedKeys: Object.keys(payload),
+        mapped: row,
+      },
+      { status: 422 },
+    );
+  }
+
+  const result = await supabase.from("blog").insert(row);
+
+  console.log(
+    `[${logPrefix}] insert result:`,
+    JSON.stringify(result.error ?? { status: "ok", id: nextId }),
+  );
+
+  if (result.error) {
+    return Response.json(
+      { error: result.error, mapped: row },
+      { status: 500 },
+    );
+  }
+
+  return Response.json({ status: "ok" }, { status: 200 });
+}
