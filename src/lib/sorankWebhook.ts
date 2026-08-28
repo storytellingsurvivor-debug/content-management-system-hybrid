@@ -8,6 +8,8 @@
 // place, and reads each value from its documented key with a couple of
 // well-known aliases as fallback. See docs/sorank-webhooks.md.
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 export interface SorankBrand {
   authorName: string;
   authorImageUrl: string;
@@ -154,23 +156,6 @@ export function mapSorankArticle(
 // stop first and report which keys actually arrived.
 const REQUIRED_COLUMNS: (keyof SorankBlogRow)[] = ["slug", "content"];
 
-// Minimal shape we need from the Supabase client — typed loosely so this file
-// carries no hard dependency on @supabase types.
-interface SupabaseLike {
-  from(table: string): {
-    select(
-      columns: string,
-      options?: { count?: "exact"; head?: boolean },
-    ): {
-      order(
-        column: string,
-        options: { ascending: boolean },
-      ): { limit(n: number): Promise<{ data: unknown; error: unknown }> };
-    };
-    insert(row: unknown): Promise<{ error: unknown }>;
-  };
-}
-
 // Shared POST handler for every Sorank route. Differences between routes are
 // just the Supabase client, the brand defaults, and a log prefix.
 //
@@ -183,7 +168,7 @@ interface SupabaseLike {
 // between count and the real max id) can't cause a duplicate-key 500.
 export async function handleSorankWebhook(
   request: Request,
-  supabase: SupabaseLike,
+  supabase: SupabaseClient,
   brand: SorankBrand,
   logPrefix: string,
 ): Promise<Response> {
