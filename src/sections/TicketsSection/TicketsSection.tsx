@@ -6,6 +6,7 @@ import {
   Box,
   Button,
   Chip,
+  Collapse,
   IconButton,
   MenuItem,
   Paper,
@@ -20,6 +21,7 @@ import {
   RefreshRounded,
   SaveRounded,
 } from "@mui/icons-material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { EnvironmentLabel } from "@/types/connection";
 
@@ -100,6 +102,9 @@ export function TicketsSection({
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [filter, setFilter] = useState<StatusFilter>("all");
+  // Tickets start collapsed; a ticket only shows its details and actions once
+  // its id is added here by clicking the card header.
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState<EditDraft>({
     pseudo: "",
@@ -206,6 +211,15 @@ export function TicketsSection({
     } finally {
       setBusyId(null);
     }
+  };
+
+  const toggleExpanded = (id: number) => {
+    setExpandedIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   const startEdit = (ticket: TicketRow) => {
@@ -357,21 +371,35 @@ export function TicketsSection({
                 const status = normalizeStatus(ticket.status);
                 const isEditing = editingId === ticket.id;
                 const isBusy = busyId === ticket.id;
+                const isOpen = expandedIds.has(ticket.id);
                 return (
                   <Paper
                     key={ticket.id}
                     variant="outlined"
                     sx={{ p: 2, borderRadius: 2 }}
                   >
+                    {/* Header stays visible; clicking it expands the ticket
+                        to reveal its details and actions. */}
                     <Box
+                      onClick={() => toggleExpanded(ticket.id)}
+                      role="button"
+                      aria-expanded={isOpen}
                       sx={{
                         display: "flex",
                         alignItems: "center",
                         gap: 1,
                         flexWrap: "wrap",
-                        mb: 1,
+                        cursor: "pointer",
+                        userSelect: "none",
                       }}
                     >
+                      <ExpandMoreIcon
+                        sx={{
+                          color: "text.secondary",
+                          transition: "transform 0.2s",
+                          transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+                        }}
+                      />
                       <Chip
                         size="small"
                         label={STATUS_META[status].label}
@@ -382,6 +410,18 @@ export function TicketsSection({
                         {ticket.type ? ` · ${ticket.type}` : ""}
                       </Typography>
                       <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          maxWidth: { xs: "100%", sm: 220 },
+                        }}
+                      >
+                        {ticket.email || "—"}
+                      </Typography>
+                      <Typography
                         variant="caption"
                         color="text.secondary"
                         sx={{ ml: "auto" }}
@@ -390,7 +430,9 @@ export function TicketsSection({
                       </Typography>
                     </Box>
 
-                    <Typography variant="body2" color="text.secondary">
+                    <Collapse in={isOpen} unmountOnExit>
+                      <Box sx={{ mt: 1.5 }}>
+                        <Typography variant="body2" color="text.secondary">
                       {ticket.email || "—"}
                       {ticket.pseudo ? ` · ${ticket.pseudo}` : ""}
                     </Typography>
@@ -527,6 +569,8 @@ export function TicketsSection({
                         </IconButton>
                       </Box>
                     </Box>
+                      </Box>
+                    </Collapse>
                   </Paper>
                 );
               })}
