@@ -13,6 +13,7 @@ import { HappySpotsSection } from "@/sections/HappySpotsSection/HappySpotsSectio
 import { HappyWallSection } from "@/sections/HappyWallSection/HappyWallSection";
 import { TemplateEditorSection } from "@/sections/TemplateEditorSection/TemplateEditorSection";
 import { TemplatesSection } from "@/sections/TemplatesSection/TemplatesSection";
+import { TicketsSection } from "@/sections/TicketsSection/TicketsSection";
 import {
   DEFAULT_BLOG_COLUMNS,
   inferColumnsFromRow,
@@ -48,6 +49,7 @@ type WorkspaceTab =
   | "happy"
   | "happyDates"
   | "happyWall"
+  | "tickets"
   | "visits";
 
 const TEMPLATE_DEFAULTS: Record<string, unknown> = {
@@ -232,8 +234,10 @@ export default function Home() {
     happy: Boolean(features?.hasSpots),
     happyDates: Boolean(features?.hasDates),
     happyWall: Boolean(features?.wallTable),
-    // browsers table exists in every Milo DB; the section shows a graceful
-    // warning if a connected DB happens not to have it.
+    // The tickets/browsers tables show a graceful warning inside their own
+    // section if a connected DB happens not to have them, so the tabs stay
+    // visible everywhere.
+    tickets: true,
     visits: true,
   };
   const safeTab: WorkspaceTab = tabAvailable[activeTab] ? activeTab : "blog";
@@ -939,6 +943,9 @@ export default function Home() {
             <Tab label="Happy Dates" value="happyDates" />
           )}
           {features?.wallTable && <Tab label="Happy Wall" value="happyWall" />}
+          {/* ml:auto pushes Tickets and every tab after it (Visits) to the
+              right, so both sit at the flex end of the tab bar. */}
+          <Tab label="Tickets" value="tickets" sx={{ ml: "auto" }} />
           <Tab label="Visits" value="visits" />
         </Tabs>
       </Box>
@@ -1028,6 +1035,15 @@ export default function Home() {
           environment={connectionValues.environment}
           onFeedback={setFeedbackMessage}
           table={features.wallTable}
+        />
+      )}
+
+      {safeTab === "tickets" && (
+        <TicketsSection
+          isConnected={isConnected}
+          client={supabaseClient}
+          environment={connectionValues.environment}
+          onFeedback={setFeedbackMessage}
         />
       )}
 
