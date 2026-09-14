@@ -8,14 +8,27 @@ const supabase = createClient(
 export async function POST(request: Request): Promise<Response> {
   const body = await request.json();
 
-  const { count, error: countError } = await supabase
+  // Use max(id)+1, not count+1: once any row has been deleted the count is
+  // smaller than the real max id, so count+1 collides with an existing row and
+  // the insert fails with a duplicate-key ("blog_pkey") 500.
+  const { data: maxRows, error: maxError } = await supabase
     .from("blog")
-    .select("*", { count: "exact", head: true });
+    .select("id")
+    .order("id", { ascending: false })
+    .limit(1);
 
-  console.log("[happy/staging] Blog count:", count, "countError:", countError);
+  if (maxError) {
+    console.error("[happy/staging] max-id lookup failed:", maxError);
+    return Response.json({ error: maxError }, { status: 500 });
+  }
+
+  const topId = Number(maxRows?.[0]?.id ?? 0);
+  const nextId = (Number.isFinite(topId) ? topId : 0) + 1;
+
+  console.log("[happy/staging] Blog next id:", nextId);
 
   const row = {
-    id: (count ?? 0) + 1,
+    id: nextId,
     title: body.title,
     slug: body.slug,
     cover_image_url: body.heroImageUrl,
