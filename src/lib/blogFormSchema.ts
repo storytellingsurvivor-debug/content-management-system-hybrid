@@ -8,7 +8,9 @@ const BLOG_OVERRIDES: Record<
   string,
   Partial<Pick<BlogColumnDefinition, "uiType" | "required" | "readOnly">>
 > = {
-  content: { uiType: "markdown", required: true },
+  content_format: { uiType: "select", required: true },
+  content_markdown: { uiType: "markdown", required: false },
+  content_html: { uiType: "html", required: false },
   cover_url: { uiType: "url" },
   author_url: { uiType: "url" },
   read_in_minutes: { uiType: "number" },
@@ -39,10 +41,24 @@ export const DEFAULT_BLOG_COLUMNS: BlogColumnDefinition[] = [
     readOnly: false,
   },
   {
-    name: "content",
+    name: "content_format",
+    label: "Content Format",
+    uiType: "select",
+    required: true,
+    readOnly: false,
+  },
+  {
+    name: "content_markdown",
     label: "Content (Markdown)",
     uiType: "markdown",
-    required: true,
+    required: false,
+    readOnly: false,
+  },
+  {
+    name: "content_html",
+    label: "Content (HTML)",
+    uiType: "html",
+    required: false,
     readOnly: false,
   },
   {
@@ -76,7 +92,9 @@ export const DEFAULT_BLOG_COLUMNS: BlogColumnDefinition[] = [
 ];
 
 function guessUiType(name: string, value: unknown): FieldUiType {
-  if (name === "content") return "markdown";
+  if (name === "content_format") return "select";
+  if (name === "content_markdown") return "markdown";
+  if (name === "content_html") return "html";
   if (name.endsWith("_url") || name.includes("url")) return "url";
   if (name.endsWith("_at") || name.includes("date")) return "datetime";
   if (typeof value === "number") return "number";
@@ -104,7 +122,7 @@ export function inferColumnsFromRow(
       name,
       label: toLabel(name),
       uiType: override?.uiType ?? guessUiType(name, value),
-      required: override?.required ?? (name === "slug" || name === "content"),
+      required: override?.required ?? name === "slug",
       readOnly: override?.readOnly ?? READ_ONLY_COLUMNS.has(name),
     } satisfies BlogColumnDefinition;
   });
@@ -143,13 +161,23 @@ export function validateBlogPayload(
   payload: Record<string, unknown>,
 ): string | null {
   const slug = String(payload.slug ?? "").trim();
-  const content = String(payload.content ?? "").trim();
+  const contentFormat = String(payload.content_format ?? "markdown").trim();
+  const contentMarkdown = String(payload.content_markdown ?? "").trim();
+  const contentHtml = String(payload.content_html ?? "").trim();
 
   if (!slug) return "Slug is required.";
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
     return "Slug format is invalid. Use lowercase letters, numbers, and hyphens.";
   }
-  if (!content) return "Content is required.";
+  if (contentFormat !== "markdown" && contentFormat !== "html") {
+    return "Content Format must be either 'markdown' or 'html'.";
+  }
+  if (contentFormat === "html" && !contentHtml) {
+    return "Content (HTML) is required.";
+  }
+  if (contentFormat === "markdown" && !contentMarkdown) {
+    return "Content (Markdown) is required.";
+  }
 
   const minutes = payload.read_in_minutes;
   if (

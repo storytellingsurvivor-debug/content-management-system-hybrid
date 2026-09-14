@@ -32,7 +32,8 @@ export async function POST(request: Request): Promise<Response> {
     title: body.title,
     slug: body.slug,
     cover_image_url: body.heroImageUrl,
-    content: body.content_markdown,
+    content_markdown: body.content_markdown,
+    content_format: "markdown",
     language: body.languageCode,
     seo_keywords:
       Array.isArray(body.keywords) && body.keywords.length > 0

@@ -50,7 +50,8 @@ const row = mapSorankArticle(published, brand, 74);
 assert.equal(row.id, 74);
 assert.equal(row.title, "Comment demander de l'aide");
 assert.equal(row.slug, "comment-demander-de-l-aide");
-assert.equal(row.content, "<h1>Bonjour</h1><p>Texte</p>");
+assert.equal(row.content_html, "<h1>Bonjour</h1><p>Texte</p>");
+assert.equal(row.content_format, "html");
 assert.equal(row.cover_image_url, "https://example.com/cover.webp");
 assert.equal(row.language, "fr"); // BCP-47 "fr-FR" -> primary subtag
 assert.equal(row.seo_keywords, "demander de l'aide");
@@ -99,7 +100,8 @@ const flat = mapSorankArticle(
   1,
 );
 assert.equal(flat.title, "T");
-assert.equal(flat.content, "<p>x</p>");
+assert.equal(flat.content_html, "<p>x</p>");
+assert.equal(flat.content_format, "html");
 assert.equal(flat.language, "en");
 assert.equal(typeof flat.created_at, "string");
 
