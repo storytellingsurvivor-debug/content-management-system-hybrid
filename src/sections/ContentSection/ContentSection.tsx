@@ -5,12 +5,17 @@ import {
   Avatar,
   Box,
   Button,
+  FormControl,
   FormControlLabel,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Switch,
   TextField,
   Typography,
 } from "@mui/material";
+import type { Theme } from "@mui/material/styles";
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -131,6 +136,16 @@ function resolveFirstValidUrl(
   return "";
 }
 
+// content_format switches which of content_markdown/content_html is edited
+// and previewed; both fields are rendered by hand below rather than through
+// the generic column loop, and this switch is deliberately placed right
+// before that editor so authors pick the format before writing content.
+const CONTENT_FIELD_NAMES = new Set([
+  "content_format",
+  "content_markdown",
+  "content_html",
+]);
+
 export function ContentSection({
   isConnected,
   isBusy,
@@ -141,7 +156,10 @@ export function ContentSection({
   onFieldChange,
   onSubmit,
 }: ContentSectionProps) {
-  const contentMarkdown = String(values.content ?? "");
+  const contentFormat = values.content_format === "html" ? "html" : "markdown";
+  const contentFieldName =
+    contentFormat === "html" ? "content_html" : "content_markdown";
+  const contentValue = String(values[contentFieldName] ?? "");
   const previewTitle = String(
     values.title ?? values.slug ?? "Untitled article",
   );
@@ -169,6 +187,59 @@ export function ContentSection({
     "cover_image_url",
     "image_url",
   ]);
+  // Shared by both the Markdown (react-markdown) and HTML
+  // (dangerouslySetInnerHTML) preview branches so the two formats render
+  // with the same typography/table look.
+  const contentPreviewSx = {
+    "& p": { my: 1.25, lineHeight: 1.7 },
+    "& h1, & h2, & h3, & h4, & h5, & h6": {
+      mt: 2,
+      mb: 1,
+    },
+    "& ul, & ol": { pl: 3, my: 1.25 },
+    "& li": { mb: 0.5 },
+    "& blockquote": {
+      m: 0,
+      pl: 2,
+      py: 0.5,
+      borderLeft: (theme: Theme) => `3px solid ${theme.palette.divider}`,
+      color: "text.secondary",
+    },
+    "& pre": {
+      p: 1.5,
+      borderRadius: 1,
+      overflowX: "auto",
+      bgcolor: "action.hover",
+    },
+    "& code": {
+      px: 0.5,
+      py: 0.15,
+      borderRadius: 0.5,
+      bgcolor: "action.hover",
+      fontSize: "0.875em",
+    },
+    "& table": {
+      width: "100%",
+      borderCollapse: "collapse",
+      my: 1.5,
+      display: "block",
+      overflowX: "auto",
+    },
+    "& th, & td": {
+      border: (theme: Theme) => `1px solid ${theme.palette.divider}`,
+      p: 0.75,
+      textAlign: "left",
+    },
+    "& img": {
+      display: "block",
+      width: "100%",
+      maxWidth: "100%",
+      height: "auto",
+      borderRadius: 1,
+      objectFit: "cover",
+    },
+  } as const;
+
   const markdownComponents: Components = {
     a: ({ href, children }) => {
       const safeHref = normalizeMarkdownUrl(String(href ?? ""));
@@ -245,7 +316,9 @@ export function ContentSection({
         <>
           <Box sx={contentGridSx}>
             <Box sx={editorColumnSx}>
-              {columns.map((column) => {
+              {columns
+                .filter((column) => !CONTENT_FIELD_NAMES.has(column.name))
+                .map((column) => {
                 const value = values[column.name];
                 // `id` is the only field the DB owns after creation.
                 const createModeEditableSystemField =
@@ -310,6 +383,39 @@ export function ContentSection({
                   />
                 );
               })}
+
+              <FormControl fullWidth>
+                <InputLabel id="content-format-label">
+                  Content Format
+                </InputLabel>
+                <Select
+                  labelId="content-format-label"
+                  label="Content Format"
+                  value={contentFormat}
+                  onChange={(event) =>
+                    onFieldChange("content_format", event.target.value)
+                  }
+                >
+                  <MenuItem value="markdown">Markdown</MenuItem>
+                  <MenuItem value="html">HTML</MenuItem>
+                </Select>
+              </FormControl>
+
+              <TextField
+                label={
+                  contentFormat === "html"
+                    ? "Content (HTML)"
+                    : "Content (Markdown)"
+                }
+                value={contentValue}
+                onChange={(event) =>
+                  onFieldChange(contentFieldName, event.target.value)
+                }
+                required
+                multiline
+                rows={16}
+                fullWidth
+              />
             </Box>
 
             <Box
@@ -393,66 +499,23 @@ export function ContentSection({
                   )}
 
                   <Paper variant="outlined" sx={markdownPaperSx}>
-                    {contentMarkdown.trim() ? (
-                      <Box
-                        sx={{
-                          "& p": { my: 1.25, lineHeight: 1.7 },
-                          "& h1, & h2, & h3, & h4, & h5, & h6": {
-                            mt: 2,
-                            mb: 1,
-                          },
-                          "& ul, & ol": { pl: 3, my: 1.25 },
-                          "& li": { mb: 0.5 },
-                          "& blockquote": {
-                            m: 0,
-                            pl: 2,
-                            py: 0.5,
-                            borderLeft: (theme) =>
-                              `3px solid ${theme.palette.divider}`,
-                            color: "text.secondary",
-                          },
-                          "& pre": {
-                            p: 1.5,
-                            borderRadius: 1,
-                            overflowX: "auto",
-                            bgcolor: "action.hover",
-                          },
-                          "& code": {
-                            px: 0.5,
-                            py: 0.15,
-                            borderRadius: 0.5,
-                            bgcolor: "action.hover",
-                            fontSize: "0.875em",
-                          },
-                          "& table": {
-                            width: "100%",
-                            borderCollapse: "collapse",
-                            my: 1.5,
-                            display: "block",
-                            overflowX: "auto",
-                          },
-                          "& th, & td": {
-                            border: (theme) =>
-                              `1px solid ${theme.palette.divider}`,
-                            p: 0.75,
-                            textAlign: "left",
-                          },
-                          "& img": {
-                            display: "block",
-                            width: "100%",
-                            maxWidth: "100%",
-                            height: "auto",
-                            borderRadius: 1,
-                            objectFit: "cover",
-                          },
-                        }}
-                      >
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          components={markdownComponents}
-                        >
-                          {contentMarkdown}
-                        </ReactMarkdown>
+                    {contentValue.trim() ? (
+                      <Box sx={contentPreviewSx}>
+                        {contentFormat === "html" ? (
+                          <Box
+                            // Admin-only live preview of content the same
+                            // author is actively typing; rendered the same
+                            // way the public site renders HTML posts.
+                            dangerouslySetInnerHTML={{ __html: contentValue }}
+                          />
+                        ) : (
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={markdownComponents}
+                          >
+                            {contentValue}
+                          </ReactMarkdown>
+                        )}
                       </Box>
                     ) : (
                       <Typography color="text.secondary">

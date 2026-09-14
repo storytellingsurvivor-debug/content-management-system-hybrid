@@ -3,6 +3,8 @@ export type FieldUiType =
   | "number"
   | "boolean"
   | "markdown"
+  | "html"
+  | "select"
   | "url"
   | "datetime"
   | "json"

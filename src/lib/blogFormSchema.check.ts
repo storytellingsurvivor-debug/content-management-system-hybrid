@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import {
   inferColumnsFromRow,
   toWritablePayload,
+  validateBlogPayload,
 } from "./blogFormSchema.ts";
 
 const row = {
@@ -13,7 +14,9 @@ const row = {
   created_at: "2026-01-01T00:00:00.000Z",
   updated_at: "2026-02-02T00:00:00.000Z",
   slug: "hello-world",
-  content: "# hi",
+  content_markdown: "# hi",
+  content_html: null,
+  content_format: "markdown",
 };
 
 const columns = inferColumnsFromRow(row);
@@ -46,5 +49,54 @@ const defaults = inferColumnsFromRow(null);
 const createdAt = defaults.find((c) => c.name === "created_at");
 assert.equal(createdAt?.readOnly, false);
 assert.equal(defaults.find((c) => c.name === "id")?.readOnly, true);
+
+// content_format drives which of content_markdown/content_html is required,
+// so neither of those two carries a static `required` flag on its own.
+assert.equal(
+  columns.find((c) => c.name === "content_format")?.uiType,
+  "select",
+);
+assert.equal(
+  columns.find((c) => c.name === "content_format")?.required,
+  true,
+);
+assert.equal(
+  columns.find((c) => c.name === "content_markdown")?.uiType,
+  "markdown",
+);
+assert.equal(
+  columns.find((c) => c.name === "content_markdown")?.required,
+  false,
+);
+assert.equal(
+  columns.find((c) => c.name === "content_html")?.uiType,
+  "html",
+);
+
+// Validation enforces content by format, not a single always-required field.
+assert.equal(
+  validateBlogPayload({ slug: "a", content_format: "markdown" }),
+  "Content (Markdown) is required.",
+);
+assert.equal(
+  validateBlogPayload({
+    slug: "a",
+    content_format: "html",
+    content_markdown: "",
+  }),
+  "Content (HTML) is required.",
+);
+assert.equal(
+  validateBlogPayload({
+    slug: "a",
+    content_format: "html",
+    content_html: "<p>hi</p>",
+  }),
+  null,
+);
+assert.equal(
+  validateBlogPayload({ slug: "a", content_format: "csv" }),
+  "Content Format must be either 'markdown' or 'html'.",
+);
 
 console.log("blog form schema: ok");

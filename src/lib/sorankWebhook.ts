@@ -23,7 +23,8 @@ export interface SorankBlogRow {
   title: unknown;
   slug: unknown;
   cover_image_url: string | null;
-  content: unknown;
+  content_html: unknown;
+  content_format: "html";
   language: unknown;
   seo_keywords: string | null;
   meta_description: unknown;
@@ -147,7 +148,7 @@ export function mapSorankArticle(
     cover_image_url: extractCoverImage(article),
     // Sorank delivers the article as a full HTML body; markdown/plain aliases
     // are tolerated so a payload-format change does not drop the content.
-    content: firstString(
+    content_html: firstString(
       article.content,
       article.htmlContent,
       article.html_content,
@@ -157,6 +158,7 @@ export function mapSorankArticle(
       article.body,
       article.content_markdown,
     ),
+    content_format: "html",
     language: normalizeLanguage(
       firstString(
         article.language,
@@ -194,7 +196,11 @@ export function mapSorankArticle(
 // The `blog` columns that cannot be null. If a payload maps any of these to a
 // falsy value the DB insert would raise a bare 500 with no clue why — so we
 // stop first and report which keys actually arrived.
-const REQUIRED_COLUMNS: (keyof SorankBlogRow)[] = ["title", "slug", "content"];
+const REQUIRED_COLUMNS: (keyof SorankBlogRow)[] = [
+  "title",
+  "slug",
+  "content_html",
+];
 
 // Shared POST handler for every Sorank route. Differences between routes are
 // just the Supabase client, the brand defaults, and a log prefix.
