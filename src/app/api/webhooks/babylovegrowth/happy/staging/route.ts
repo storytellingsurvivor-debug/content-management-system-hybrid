@@ -33,6 +33,7 @@ export async function POST(request: Request): Promise<Response> {
     slug: body.slug,
     cover_image_url: body.heroImageUrl,
     content_markdown: body.content_markdown,
+    content_html: body.content_html,
     content_format: "markdown",
     language: body.languageCode,
     seo_keywords:
