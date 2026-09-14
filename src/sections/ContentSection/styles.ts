@@ -15,8 +15,27 @@ export const contentGridSx: SxProps<Theme> = {
 };
 
 export const editorColumnSx: SxProps<Theme> = {
-  display: "grid",
+  display: "flex",
+  flexDirection: "column",
   gap: 1.5,
+  minWidth: 0,
+  height: "100%",
+};
+
+// The content editor is the last input and grows to fill the remaining height
+// of the left column, so its bottom lines up with the end of the live preview
+// on the right. The CTA row then sits directly beneath it.
+export const contentFieldSx: SxProps<Theme> = {
+  flexGrow: 1,
+  minHeight: 320,
+  "& .MuiInputBase-root": {
+    height: "100%",
+    alignItems: "flex-start",
+  },
+  "& .MuiInputBase-inputMultiline": {
+    height: "100% !important",
+    overflowY: "auto !important",
+  },
 };
 
 export const previewBoxSx: SxProps<Theme> = {
@@ -41,6 +60,7 @@ export const markdownPaperSx: SxProps<Theme> = {
 export const actionRowSx: SxProps<Theme> = {
   display: "flex",
   gap: 1.5,
-  mt: 2,
+  mt: 1,
   flexWrap: "wrap",
+  justifyContent: "space-between",
 };

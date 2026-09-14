@@ -27,6 +27,7 @@ import type {
 } from "@/types/blog";
 import {
   actionRowSx,
+  contentFieldSx,
   contentGridSx,
   editorColumnSx,
   markdownPaperSx,
@@ -413,9 +414,42 @@ export function ContentSection({
                 }
                 required
                 multiline
-                rows={16}
+                minRows={12}
                 fullWidth
+                sx={contentFieldSx}
               />
+
+              {validationError && (
+                <Alert severity="error">{validationError}</Alert>
+              )}
+
+              <Box sx={actionRowSx}>
+                {mode === "create" ? (
+                  <Button
+                    variant="contained"
+                    disabled={isBusy}
+                    onClick={() => onSubmit("create")}
+                  >
+                    Create
+                  </Button>
+                ) : (
+                  <Button
+                    variant="contained"
+                    disabled={isBusy}
+                    onClick={() => onSubmit("update")}
+                  >
+                    Update
+                  </Button>
+                )}
+                <Button
+                  variant="outlined"
+                  color="error"
+                  disabled={isBusy || mode !== "edit"}
+                  onClick={() => onSubmit("delete")}
+                >
+                  Delete
+                </Button>
+              </Box>
             </Box>
 
             <Box
@@ -526,40 +560,6 @@ export function ContentSection({
                 </Box>
               </Box>
             </Box>
-          </Box>
-
-          {validationError && (
-            <Alert severity="error" sx={{ mt: 2 }}>
-              {validationError}
-            </Alert>
-          )}
-
-          <Box sx={actionRowSx}>
-            {mode === "create" ? (
-              <Button
-                variant="contained"
-                disabled={isBusy}
-                onClick={() => onSubmit("create")}
-              >
-                Create
-              </Button>
-            ) : (
-              <Button
-                variant="contained"
-                disabled={isBusy}
-                onClick={() => onSubmit("update")}
-              >
-                Update
-              </Button>
-            )}
-            <Button
-              variant="outlined"
-              color="error"
-              disabled={isBusy || mode !== "edit"}
-              onClick={() => onSubmit("delete")}
-            >
-              Delete
-            </Button>
           </Box>
         </>
       )}
