@@ -22,22 +22,6 @@ export const editorColumnSx: SxProps<Theme> = {
   height: "100%",
 };
 
-// The content editor is the last input and grows to fill the remaining height
-// of the left column, so its bottom lines up with the end of the live preview
-// on the right. The CTA row then sits directly beneath it.
-export const contentFieldSx: SxProps<Theme> = {
-  flexGrow: 1,
-  minHeight: 320,
-  "& .MuiInputBase-root": {
-    height: "100%",
-    alignItems: "flex-start",
-  },
-  "& .MuiInputBase-inputMultiline": {
-    height: "100% !important",
-    overflowY: "auto !important",
-  },
-};
-
 export const previewBoxSx: SxProps<Theme> = {
   p: 2,
   border: (theme) => `1px solid ${theme.palette.divider}`,
