@@ -25,9 +25,9 @@ import type {
   EditorMode,
   SubmitAction,
 } from "@/types/blog";
+import { ContentCodeEditor } from "./ContentCodeEditor";
 import {
   actionRowSx,
-  contentFieldSx,
   contentGridSx,
   editorColumnSx,
   markdownPaperSx,
@@ -402,21 +402,21 @@ export function ContentSection({
                 </Select>
               </FormControl>
 
-              <TextField
+              <ContentCodeEditor
                 label={
                   contentFormat === "html"
                     ? "Content (HTML)"
                     : "Content (Markdown)"
                 }
                 value={contentValue}
-                onChange={(event) =>
-                  onFieldChange(contentFieldName, event.target.value)
-                }
+                language={contentFormat === "html" ? "html" : "markdown"}
                 required
-                multiline
-                minRows={12}
-                fullWidth
-                sx={contentFieldSx}
+                placeholder={
+                  contentFormat === "html"
+                    ? "Write HTML content…"
+                    : "Write Markdown content…"
+                }
+                onChange={(next) => onFieldChange(contentFieldName, next)}
               />
 
               {validationError && (
