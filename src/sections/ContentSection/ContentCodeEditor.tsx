@@ -161,10 +161,20 @@ export function ContentCodeEditor({
             backgroundColor: "transparent !important",
             minHeight: "100%",
           },
-          "& .w-tc-editor-text, & .w-tc-editor textarea": {
-            fontFamily:
-              'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important',
-          },
+          // The library overlays a transparent, editable `<textarea>`
+          // (`.w-tc-editor-text`) on top of the syntax-highlighted, visible
+          // layer (`.w-tc-editor-preview`). The two only line up glyph-for-glyph
+          // when they render in the same font. Both inherit their font from the
+          // `.w-tc-editor` container, so set the monospace family there — and on
+          // each layer explicitly — otherwise the visible preview falls back to
+          // the proportional MUI theme font while the textarea is monospace, and
+          // their differing glyph widths make selections/caret land on the wrong
+          // characters.
+          "& .w-tc-editor, & .w-tc-editor-text, & .w-tc-editor-preview, & .w-tc-editor-preview pre, & .w-tc-editor-preview code":
+            {
+              fontFamily:
+                'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important',
+            },
         }}
       >
         <CodeEditor
