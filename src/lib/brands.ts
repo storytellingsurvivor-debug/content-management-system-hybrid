@@ -81,20 +81,43 @@ const BRAND_SITE_URLS: Partial<Record<BrandKey, string>> = {
   happy: "https://www.happy-milo.com",
 };
 
-const SITE_LANGUAGES = ["en", "fr"] as const;
+export type SiteLanguage = "en" | "fr";
 
-// Builds `<site>/<en|fr>/blog/<slug>`; returns null when the brand has no
-// public site or the article has no slug yet. Locale variants such as
-// "fr-FR" map to "fr"; anything other than fr falls back to en.
+// Maps the article's `language` value to the site's URL segment. Rows hold a
+// short code ("fr", "en"), but webhook-ingested rows can carry a BCP-47 tag
+// ("fr-FR", "en_US"), so keep the primary subtag like sorankWebhook does.
+// Returns null for anything else rather than guessing a wrong link.
+export function toSiteLanguage(language: string): SiteLanguage | null {
+  const code = language.trim().split(/[-_]/)[0].toLowerCase();
+  return code === "en" || code === "fr" ? code : null;
+}
+
+export type ArticlePublicUrl =
+  | { url: string; error: null }
+  | { url: null; error: string };
+
+// Builds `<site>/<en|fr>/blog/<slug>`. Returns null when the brand has no
+// public site; otherwise the URL, or why it can't be built yet.
 export function buildArticlePublicUrl(
   brand: BrandKey,
   language: string,
   slug: string,
-): string | null {
+): ArticlePublicUrl | null {
   const site = BRAND_SITE_URLS[brand];
+  if (!site) return null;
   const cleanSlug = slug.trim().replace(/^\/+|\/+$/g, "");
-  if (!site || !cleanSlug) return null;
-  const code = language.trim().toLowerCase().slice(0, 2);
-  const lang = SITE_LANGUAGES.find((value) => value === code) ?? "en";
-  return `${site}/${lang}/blog/${encodeURIComponent(cleanSlug)}`;
+  if (!cleanSlug) return { url: null, error: "Article has no slug yet" };
+  const lang = toSiteLanguage(language);
+  if (!lang) {
+    return {
+      url: null,
+      error: language.trim()
+        ? `Language "${language.trim()}" is not en or fr`
+        : "Article has no language (en or fr)",
+    };
+  }
+  return {
+    url: `${site}/${lang}/blog/${encodeURIComponent(cleanSlug)}`,
+    error: null,
+  };
 }

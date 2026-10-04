@@ -11,18 +11,21 @@ interface CopyArticleUrlButtonProps {
   slug: string;
 }
 
-// Same look as the Bucket section's "Copy URL" buttons. Renders nothing when
-// no public URL can be built (brand without a site, or empty slug).
+// Same look as the Bucket section's "Copy URL" buttons. Renders nothing for a
+// brand without a public site; disabled (reason on hover) when the article's
+// slug or language can't produce a valid link.
 export function CopyArticleUrlButton({
   brand,
   language,
   slug,
 }: CopyArticleUrlButtonProps) {
   const [copied, setCopied] = useState(false);
-  const url = buildArticlePublicUrl(brand, language, slug);
-  if (!url) return null;
+  const result = buildArticlePublicUrl(brand, language, slug);
+  if (!result) return null;
+  const { url, error } = result;
 
   const copyToClipboard = async () => {
+    if (!url) return;
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
@@ -33,13 +36,16 @@ export function CopyArticleUrlButton({
   };
 
   return (
-    <Button
-      size="small"
-      startIcon={<ContentCopyIcon fontSize="small" />}
-      onClick={() => void copyToClipboard()}
-      title={url}
-    >
-      {copied ? "Copied" : "Copy URL"}
-    </Button>
+    // Span wrapper so the tooltip still shows while the button is disabled.
+    <span title={url ?? error}>
+      <Button
+        size="small"
+        startIcon={<ContentCopyIcon fontSize="small" />}
+        onClick={() => void copyToClipboard()}
+        disabled={!url}
+      >
+        {copied ? "Copied" : "Copy URL"}
+      </Button>
+    </span>
   );
 }
