@@ -7,9 +7,12 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutlined";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import type { BlogRow } from "@/types/blog";
+import type { BrandKey } from "@/lib/brands";
+import { CopyArticleUrlButton } from "@/components/CopyArticleUrlButton";
 import {
   cardBodySx,
   cardChipsRowSx,
+  cardFooterSx,
   cardLiveBadgeSx,
   cardMediaWrapSx,
   cardMetaRowSx,
@@ -20,6 +23,8 @@ import {
 
 interface ArticleCardProps {
   article: BlogRow;
+  // Connected workspace brand; decides which public site the URL points to.
+  brand: BrandKey;
   isSelected: boolean;
   onSelect: () => void;
   // Human reads for this article (robots and bots excluded). `null` when the
@@ -74,6 +79,7 @@ function pickReadMinutes(row: BlogRow): string {
 
 export function ArticleCard({
   article,
+  brand: workspaceBrand,
   isSelected,
   onSelect,
   visits = null,
@@ -219,6 +225,16 @@ export function ArticleCard({
           </Box>
         </Box>
       </CardActionArea>
+      {/* Outside CardActionArea: a button can't be nested in a button. */}
+      {slug && (
+        <Box sx={cardFooterSx}>
+          <CopyArticleUrlButton
+            brand={workspaceBrand}
+            language={language}
+            slug={slug}
+          />
+        </Box>
+      )}
     </Card>
   );
 }

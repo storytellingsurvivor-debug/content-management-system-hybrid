@@ -15,6 +15,7 @@ import {
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { BrandKey } from "@/lib/brands";
 import type { BlogColumnDefinition, BlogRow } from "@/types/blog";
 import {
   BLOG_VIEWS_TABLE,
@@ -39,6 +40,7 @@ import {
 
 interface ArticlesSectionProps {
   isConnected: boolean;
+  brand: BrandKey;
   isLoading: boolean;
   client: SupabaseClient | null;
   articles: BlogRow[];
@@ -132,6 +134,7 @@ function rowStatus(row: BlogRow): "live" | "off" | "" {
 
 export function ArticlesSection({
   isConnected,
+  brand,
   isLoading,
   client,
   articles,
@@ -445,6 +448,7 @@ export function ArticlesSection({
                   <ArticleCard
                     key={value}
                     article={article}
+                    brand={brand}
                     isSelected={value === selectedArticleId}
                     onSelect={() => onSelectArticle(value)}
                     visits={statsAvailable ? humanReadsOf(article) : null}

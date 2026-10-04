@@ -74,3 +74,27 @@ export async function detectWorkspaceFeatures(
   ]);
   return { templateTable, wallTable, hasSpots, hasDates };
 }
+
+// Public site per brand, used to build shareable article links. Brands
+// without an entry get no "Copy URL" button.
+const BRAND_SITE_URLS: Partial<Record<BrandKey, string>> = {
+  happy: "https://www.happy-milo.com",
+};
+
+const SITE_LANGUAGES = ["en", "fr"] as const;
+
+// Builds `<site>/<en|fr>/blog/<slug>`; returns null when the brand has no
+// public site or the article has no slug yet. Locale variants such as
+// "fr-FR" map to "fr"; anything other than fr falls back to en.
+export function buildArticlePublicUrl(
+  brand: BrandKey,
+  language: string,
+  slug: string,
+): string | null {
+  const site = BRAND_SITE_URLS[brand];
+  const cleanSlug = slug.trim().replace(/^\/+|\/+$/g, "");
+  if (!site || !cleanSlug) return null;
+  const code = language.trim().toLowerCase().slice(0, 2);
+  const lang = SITE_LANGUAGES.find((value) => value === code) ?? "en";
+  return `${site}/${lang}/blog/${encodeURIComponent(cleanSlug)}`;
+}

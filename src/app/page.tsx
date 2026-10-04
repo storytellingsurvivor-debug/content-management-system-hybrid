@@ -954,6 +954,7 @@ export default function Home() {
         <>
           <ArticlesSection
             isConnected={isConnected}
+            brand={connectionValues.brand}
             isLoading={isArticlesLoading}
             client={supabaseClient}
             articles={articles}
@@ -966,6 +967,7 @@ export default function Home() {
 
           <ContentSection
             isConnected={isConnected}
+            brand={connectionValues.brand}
             isBusy={isSubmitting}
             mode={editorMode}
             columns={columns}
