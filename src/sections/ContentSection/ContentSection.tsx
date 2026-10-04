@@ -25,6 +25,8 @@ import type {
   EditorMode,
   SubmitAction,
 } from "@/types/blog";
+import type { BrandKey } from "@/lib/brands";
+import { CopyArticleUrlButton } from "@/components/CopyArticleUrlButton";
 import { ContentCodeEditor } from "./ContentCodeEditor";
 import {
   actionRowSx,
@@ -37,6 +39,7 @@ import {
 
 interface ContentSectionProps {
   isConnected: boolean;
+  brand: BrandKey;
   isBusy: boolean;
   mode: EditorMode;
   columns: BlogColumnDefinition[];
@@ -149,6 +152,7 @@ const CONTENT_FIELD_NAMES = new Set([
 
 export function ContentSection({
   isConnected,
+  brand,
   isBusy,
   mode,
   columns,
@@ -475,13 +479,24 @@ export function ContentSection({
                     {previewTitle}
                   </Typography>
                   {previewSlug && (
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ mb: 2 }}
+                    <Box
+                      sx={{
+                        mb: 2,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        flexWrap: "wrap",
+                      }}
                     >
-                      /{previewSlug}
-                    </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        /{previewSlug}
+                      </Typography>
+                      <CopyArticleUrlButton
+                        brand={brand}
+                        language={previewLanguage}
+                        slug={previewSlug}
+                      />
+                    </Box>
                   )}
 
                   <Box

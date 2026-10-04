@@ -123,6 +123,13 @@ export const cardMetaRowSx: SxProps<Theme> = {
   fontSize: 12,
 };
 
+export const cardFooterSx: SxProps<Theme> = {
+  px: 1,
+  pb: 1,
+  display: "flex",
+  justifyContent: "flex-end",
+};
+
 // Collapsible readership panel under the card row.
 export const statsToggleWrapSx: SxProps<Theme> = {
   mt: 3,

@@ -74,3 +74,50 @@ export async function detectWorkspaceFeatures(
   ]);
   return { templateTable, wallTable, hasSpots, hasDates };
 }
+
+// Public site per brand, used to build shareable article links. Brands
+// without an entry get no "Copy URL" button.
+const BRAND_SITE_URLS: Partial<Record<BrandKey, string>> = {
+  happy: "https://www.happy-milo.com",
+};
+
+export type SiteLanguage = "en" | "fr";
+
+// Maps the article's `language` value to the site's URL segment. Rows hold a
+// short code ("fr", "en"), but webhook-ingested rows can carry a BCP-47 tag
+// ("fr-FR", "en_US"), so keep the primary subtag like sorankWebhook does.
+// Returns null for anything else rather than guessing a wrong link.
+export function toSiteLanguage(language: string): SiteLanguage | null {
+  const code = language.trim().split(/[-_]/)[0].toLowerCase();
+  return code === "en" || code === "fr" ? code : null;
+}
+
+export type ArticlePublicUrl =
+  | { url: string; error: null }
+  | { url: null; error: string };
+
+// Builds `<site>/<en|fr>/blog/<slug>`. Returns null when the brand has no
+// public site; otherwise the URL, or why it can't be built yet.
+export function buildArticlePublicUrl(
+  brand: BrandKey,
+  language: string,
+  slug: string,
+): ArticlePublicUrl | null {
+  const site = BRAND_SITE_URLS[brand];
+  if (!site) return null;
+  const cleanSlug = slug.trim().replace(/^\/+|\/+$/g, "");
+  if (!cleanSlug) return { url: null, error: "Article has no slug yet" };
+  const lang = toSiteLanguage(language);
+  if (!lang) {
+    return {
+      url: null,
+      error: language.trim()
+        ? `Language "${language.trim()}" is not en or fr`
+        : "Article has no language (en or fr)",
+    };
+  }
+  return {
+    url: `${site}/${lang}/blog/${encodeURIComponent(cleanSlug)}`,
+    error: null,
+  };
+}
