@@ -2,6 +2,7 @@
 
 import {
   Alert,
+  Collapse,
   Avatar,
   Box,
   Button,
@@ -15,6 +16,8 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { SectionHeader } from "@/components/SectionHeader";
+import type { SectionControls } from "@/lib/sectionLayout";
 import type { Theme } from "@mui/material/styles";
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
@@ -38,6 +41,8 @@ import {
 } from "./styles";
 
 interface ContentSectionProps {
+  number?: number;
+  controls?: SectionControls;
   isConnected: boolean;
   brand: BrandKey;
   isBusy: boolean;
@@ -151,6 +156,8 @@ const CONTENT_FIELD_NAMES = new Set([
 ]);
 
 export function ContentSection({
+  number = 3,
+  controls,
   isConnected,
   brand,
   isBusy,
@@ -309,275 +316,276 @@ export function ContentSection({
 
   return (
     <Paper elevation={2} sx={sectionPaperSx}>
-      <Typography variant="h6" sx={{ mb: 2 }}>
-        3. Content
-      </Typography>
+      <SectionHeader title={`${number}. Content`} controls={controls} />
 
-      {!isConnected ? (
-        <Alert severity="info">
-          Connect and select/create an article before editing content.
-        </Alert>
-      ) : (
-        <>
-          <Box sx={contentGridSx}>
-            <Box sx={editorColumnSx}>
-              {columns
-                .filter((column) => !CONTENT_FIELD_NAMES.has(column.name))
-                .map((column) => {
-                const value = values[column.name];
-                // `id` is the only field the DB owns after creation.
-                const createModeEditableSystemField =
-                  mode === "create" && column.name === "id";
-                const isReadOnly =
-                  column.readOnly && !createModeEditableSystemField;
-                if (column.uiType === "boolean") {
+      {/* Kept mounted while hidden so the editor never loses its state. */}
+      <Collapse in={controls?.open ?? true}>
+        {!isConnected ? (
+          <Alert severity="info">
+            Connect and select/create an article before editing content.
+          </Alert>
+        ) : (
+          <>
+            <Box sx={contentGridSx}>
+              <Box sx={editorColumnSx}>
+                {columns
+                  .filter((column) => !CONTENT_FIELD_NAMES.has(column.name))
+                  .map((column) => {
+                  const value = values[column.name];
+                  // `id` is the only field the DB owns after creation.
+                  const createModeEditableSystemField =
+                    mode === "create" && column.name === "id";
+                  const isReadOnly =
+                    column.readOnly && !createModeEditableSystemField;
+                  if (column.uiType === "boolean") {
+                    return (
+                      <FormControlLabel
+                        key={column.name}
+                        control={
+                          <Switch
+                            checked={Boolean(value)}
+                            onChange={(event) =>
+                              onFieldChange(column.name, event.target.checked)
+                            }
+                            disabled={isReadOnly}
+                          />
+                        }
+                        label={column.label}
+                      />
+                    );
+                  }
+
+                  const multiline = column.uiType === "markdown";
+                  const rows = multiline ? 16 : 1;
+                  const type =
+                    column.uiType === "number"
+                      ? "number"
+                      : column.uiType === "datetime"
+                        ? "datetime-local"
+                        : column.uiType === "url"
+                          ? "url"
+                          : "text";
+
                   return (
-                    <FormControlLabel
+                    <TextField
                       key={column.name}
-                      control={
-                        <Switch
-                          checked={Boolean(value)}
-                          onChange={(event) =>
-                            onFieldChange(column.name, event.target.checked)
-                          }
-                          disabled={isReadOnly}
-                        />
-                      }
                       label={column.label}
+                      value={
+                        column.uiType === "datetime"
+                          ? toDateTimeLocalValue(value)
+                          : fieldValue(value)
+                      }
+                      onChange={(event) =>
+                        onFieldChange(
+                          column.name,
+                          column.uiType === "datetime"
+                            ? datetimeLocalInputToIso(event.target.value)
+                            : event.target.value,
+                        )
+                      }
+                      required={
+                        column.required ||
+                        (mode === "create" && column.name === "id")
+                      }
+                      slotProps={{ input: { readOnly: isReadOnly } }}
+                      multiline={multiline}
+                      rows={rows}
+                      type={type}
+                      fullWidth
                     />
                   );
-                }
+                })}
 
-                const multiline = column.uiType === "markdown";
-                const rows = multiline ? 16 : 1;
-                const type =
-                  column.uiType === "number"
-                    ? "number"
-                    : column.uiType === "datetime"
-                      ? "datetime-local"
-                      : column.uiType === "url"
-                        ? "url"
-                        : "text";
-
-                return (
-                  <TextField
-                    key={column.name}
-                    label={column.label}
-                    value={
-                      column.uiType === "datetime"
-                        ? toDateTimeLocalValue(value)
-                        : fieldValue(value)
-                    }
+                <FormControl fullWidth>
+                  <InputLabel id="content-format-label">
+                    Content Format
+                  </InputLabel>
+                  <Select
+                    labelId="content-format-label"
+                    label="Content Format"
+                    value={contentFormat}
                     onChange={(event) =>
-                      onFieldChange(
-                        column.name,
-                        column.uiType === "datetime"
-                          ? datetimeLocalInputToIso(event.target.value)
-                          : event.target.value,
-                      )
+                      onFieldChange("content_format", event.target.value)
                     }
-                    required={
-                      column.required ||
-                      (mode === "create" && column.name === "id")
-                    }
-                    slotProps={{ input: { readOnly: isReadOnly } }}
-                    multiline={multiline}
-                    rows={rows}
-                    type={type}
-                    fullWidth
-                  />
-                );
-              })}
+                  >
+                    <MenuItem value="markdown">Markdown</MenuItem>
+                    <MenuItem value="html">HTML</MenuItem>
+                  </Select>
+                </FormControl>
 
-              <FormControl fullWidth>
-                <InputLabel id="content-format-label">
-                  Content Format
-                </InputLabel>
-                <Select
-                  labelId="content-format-label"
-                  label="Content Format"
-                  value={contentFormat}
-                  onChange={(event) =>
-                    onFieldChange("content_format", event.target.value)
+                <ContentCodeEditor
+                  label={
+                    contentFormat === "html"
+                      ? "Content (HTML)"
+                      : "Content (Markdown)"
                   }
-                >
-                  <MenuItem value="markdown">Markdown</MenuItem>
-                  <MenuItem value="html">HTML</MenuItem>
-                </Select>
-              </FormControl>
+                  value={contentValue}
+                  language={contentFormat === "html" ? "html" : "markdown"}
+                  required
+                  placeholder={
+                    contentFormat === "html"
+                      ? "Write HTML content…"
+                      : "Write Markdown content…"
+                  }
+                  onChange={(next) => onFieldChange(contentFieldName, next)}
+                />
 
-              <ContentCodeEditor
-                label={
-                  contentFormat === "html"
-                    ? "Content (HTML)"
-                    : "Content (Markdown)"
-                }
-                value={contentValue}
-                language={contentFormat === "html" ? "html" : "markdown"}
-                required
-                placeholder={
-                  contentFormat === "html"
-                    ? "Write HTML content…"
-                    : "Write Markdown content…"
-                }
-                onChange={(next) => onFieldChange(contentFieldName, next)}
-              />
-
-              {validationError && (
-                <Alert severity="error">{validationError}</Alert>
-              )}
-
-              <Box sx={actionRowSx}>
-                {mode === "create" ? (
-                  <Button
-                    variant="contained"
-                    disabled={isBusy}
-                    onClick={() => onSubmit("create")}
-                  >
-                    Create
-                  </Button>
-                ) : (
-                  <Button
-                    variant="contained"
-                    disabled={isBusy}
-                    onClick={() => onSubmit("update")}
-                  >
-                    Update
-                  </Button>
+                {validationError && (
+                  <Alert severity="error">{validationError}</Alert>
                 )}
-                <Button
-                  variant="outlined"
-                  color="error"
-                  disabled={isBusy || mode !== "edit"}
-                  onClick={() => onSubmit("delete")}
-                >
-                  Delete
-                </Button>
-              </Box>
-            </Box>
 
-            <Box
-              sx={{ display: "flex", flexDirection: "column", minHeight: 0 }}
-            >
-              <Typography variant="subtitle1" sx={{ mb: 1 }}>
-                Live Preview
-              </Typography>
-              <Box sx={previewBoxSx}>
-                <Box sx={{ maxWidth: 920, mx: "auto" }}>
-                  {(previewCategory || previewLanguage) && (
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ mb: 1 }}
+                <Box sx={actionRowSx}>
+                  {mode === "create" ? (
+                    <Button
+                      variant="contained"
+                      disabled={isBusy}
+                      onClick={() => onSubmit("create")}
                     >
-                      {previewCategory ? `Category: ${previewCategory}` : ""}
-                      {previewCategory && previewLanguage ? " | " : ""}
-                      {previewLanguage ? `Language: ${previewLanguage}` : ""}
-                    </Typography>
+                      Create
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="contained"
+                      disabled={isBusy}
+                      onClick={() => onSubmit("update")}
+                    >
+                      Update
+                    </Button>
                   )}
-                  <Typography variant="h5" sx={{ mb: 0.5 }}>
-                    {previewTitle}
-                  </Typography>
-                  {previewSlug && (
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    disabled={isBusy || mode !== "edit"}
+                    onClick={() => onSubmit("delete")}
+                  >
+                    Delete
+                  </Button>
+                </Box>
+              </Box>
+
+              <Box
+                sx={{ display: "flex", flexDirection: "column", minHeight: 0 }}
+              >
+                <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                  Live Preview
+                </Typography>
+                <Box sx={previewBoxSx}>
+                  <Box sx={{ maxWidth: 920, mx: "auto" }}>
+                    {(previewCategory || previewLanguage) && (
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mb: 1 }}
+                      >
+                        {previewCategory ? `Category: ${previewCategory}` : ""}
+                        {previewCategory && previewLanguage ? " | " : ""}
+                        {previewLanguage ? `Language: ${previewLanguage}` : ""}
+                      </Typography>
+                    )}
+                    <Typography variant="h5" sx={{ mb: 0.5 }}>
+                      {previewTitle}
+                    </Typography>
+                    {previewSlug && (
+                      <Box
+                        sx={{
+                          mb: 2,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <Typography variant="body2" color="text.secondary">
+                          /{previewSlug}
+                        </Typography>
+                        <CopyArticleUrlButton
+                          brand={brand}
+                          language={previewLanguage}
+                          slug={previewSlug}
+                        />
+                      </Box>
+                    )}
+
                     <Box
                       sx={{
                         mb: 2,
                         display: "flex",
                         alignItems: "center",
-                        gap: 1,
-                        flexWrap: "wrap",
+                        gap: 1.25,
                       }}
                     >
-                      <Typography variant="body2" color="text.secondary">
-                        /{previewSlug}
-                      </Typography>
-                      <CopyArticleUrlButton
-                        brand={brand}
-                        language={previewLanguage}
-                        slug={previewSlug}
-                      />
-                    </Box>
-                  )}
-
-                  <Box
-                    sx={{
-                      mb: 2,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 1.25,
-                    }}
-                  >
-                    <Avatar
-                      src={authorAvatarUrl || undefined}
-                      alt={authorName}
-                      sx={{ width: 40, height: 40 }}
-                    >
-                      {authorName ? authorName.charAt(0).toUpperCase() : "A"}
-                    </Avatar>
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">
-                        Author
-                      </Typography>
-                      <Typography variant="body1">
-                        {authorName || "Unknown"}
-                      </Typography>
-                    </Box>
-                  </Box>
-
-                  {coverUrl && (
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="caption" color="text.secondary">
-                        Background Cover
-                      </Typography>
-                      <Box
-                        component="img"
-                        src={coverUrl}
-                        alt="Background cover"
-                        sx={{
-                          display: "block",
-                          width: "100%",
-                          borderRadius: 1.5,
-                          border: (theme) =>
-                            `1px solid ${theme.palette.divider}`,
-                          objectFit: "cover",
-                          maxHeight: 360,
-                          mt: 0.75,
-                        }}
-                      />
-                    </Box>
-                  )}
-
-                  <Paper variant="outlined" sx={markdownPaperSx}>
-                    {contentValue.trim() ? (
-                      <Box sx={contentPreviewSx}>
-                        {contentFormat === "html" ? (
-                          <Box
-                            // Admin-only live preview of content the same
-                            // author is actively typing; rendered the same
-                            // way the public site renders HTML posts.
-                            dangerouslySetInnerHTML={{ __html: contentValue }}
-                          />
-                        ) : (
-                          <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
-                            components={markdownComponents}
-                          >
-                            {contentValue}
-                          </ReactMarkdown>
-                        )}
+                      <Avatar
+                        src={authorAvatarUrl || undefined}
+                        alt={authorName}
+                        sx={{ width: 40, height: 40 }}
+                      >
+                        {authorName ? authorName.charAt(0).toUpperCase() : "A"}
+                      </Avatar>
+                      <Box>
+                        <Typography variant="body2" color="text.secondary">
+                          Author
+                        </Typography>
+                        <Typography variant="body1">
+                          {authorName || "Unknown"}
+                        </Typography>
                       </Box>
-                    ) : (
-                      <Typography color="text.secondary">
-                        Content preview will appear here.
-                      </Typography>
+                    </Box>
+
+                    {coverUrl && (
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          Background Cover
+                        </Typography>
+                        <Box
+                          component="img"
+                          src={coverUrl}
+                          alt="Background cover"
+                          sx={{
+                            display: "block",
+                            width: "100%",
+                            borderRadius: 1.5,
+                            border: (theme) =>
+                              `1px solid ${theme.palette.divider}`,
+                            objectFit: "cover",
+                            maxHeight: 360,
+                            mt: 0.75,
+                          }}
+                        />
+                      </Box>
                     )}
-                  </Paper>
+
+                    <Paper variant="outlined" sx={markdownPaperSx}>
+                      {contentValue.trim() ? (
+                        <Box sx={contentPreviewSx}>
+                          {contentFormat === "html" ? (
+                            <Box
+                              // Admin-only live preview of content the same
+                              // author is actively typing; rendered the same
+                              // way the public site renders HTML posts.
+                              dangerouslySetInnerHTML={{ __html: contentValue }}
+                            />
+                          ) : (
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={markdownComponents}
+                            >
+                              {contentValue}
+                            </ReactMarkdown>
+                          )}
+                        </Box>
+                      ) : (
+                        <Typography color="text.secondary">
+                          Content preview will appear here.
+                        </Typography>
+                      )}
+                    </Paper>
+                  </Box>
                 </Box>
               </Box>
             </Box>
-          </Box>
-        </>
-      )}
+          </>
+        )}
+      </Collapse>
     </Paper>
   );
 }

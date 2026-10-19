@@ -5,15 +5,6 @@ export const sectionPaperSx: SxProps<Theme> = {
   mb: 3,
 };
 
-export const sectionHeaderRowSx: SxProps<Theme> = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 2,
-  mb: 2,
-  flexWrap: "wrap",
-};
-
 export const layoutGridSx: SxProps<Theme> = {
   display: "grid",
   gap: 3,
