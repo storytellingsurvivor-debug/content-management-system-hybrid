@@ -199,17 +199,3 @@ export const sparklineRowSx: SxProps<Theme> = {
   height: 100,
   mt: 1.5,
 };
-
-// Framed global performance overview, between the filters and the card row.
-export const overviewWrapSx: SxProps<Theme> = {
-  mt: 2,
-  px: 1.5,
-  pt: 0.5,
-  pb: 1,
-};
-
-// Global performance ranking tables — scroll inside, never the page.
-export const perfTableWrapSx: SxProps<Theme> = {
-  maxHeight: 480,
-  overflowX: "auto",
-};

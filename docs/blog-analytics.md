@@ -70,13 +70,15 @@ summarises every article at once.
 
 ## Performance overview (global ranking)
 
-A framed collapsible block, **Show performance overview**, sits at the top of
-the tab — between the filter chips and the article cards — because it covers
-every (filtered) article, unlike the per-article readership panel under the
-cards. Readership answers "how is *this* article doing"; this one
-answers "how are *all* my articles doing" in one screen. It follows the
-status / language / category filters above, excludes robots & bots, and is
-computed in `src/lib/articlePerformance.ts` from the same rows (no extra query).
+Its own section, **5. Performance overview**, at the bottom of the Blog
+articles tab (after Bucket / Media). Readership answers "how is *this* article
+doing"; this one answers "how are *all* my articles doing" in one screen.
+
+It is closed by default and only fetches `blog_views` / `browsers` the first
+time you open it (the refresh button reloads). It has its own **Language** and
+**Status** filters, excludes robots & bots, and is computed in
+`src/lib/articlePerformance.ts`. Clicking an article selects it in sections 2–3
+and scrolls back up to them.
 
 - **KPIs** — articles, reads, reads in the last 30 days, reads per article, and
   **Live but dormant** (online and nobody reads them).

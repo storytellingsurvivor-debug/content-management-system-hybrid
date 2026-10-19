@@ -11,6 +11,7 @@ import { ContentSection } from "@/sections/ContentSection/ContentSection";
 import { HappyDatesSection } from "@/sections/HappyDatesSection/HappyDatesSection";
 import { HappySpotsSection } from "@/sections/HappySpotsSection/HappySpotsSection";
 import { HappyWallSection } from "@/sections/HappyWallSection/HappyWallSection";
+import { PerformanceSection } from "@/sections/PerformanceSection/PerformanceSection";
 import { TemplateEditorSection } from "@/sections/TemplateEditorSection/TemplateEditorSection";
 import { TemplatesSection } from "@/sections/TemplatesSection/TemplatesSection";
 import { TicketsSection } from "@/sections/TicketsSection/TicketsSection";
@@ -1054,6 +1055,15 @@ export default function Home() {
       )}
 
       <BucketSection isConnected={isConnected} client={supabaseClient} />
+
+      {safeTab === "blog" && (
+        <PerformanceSection
+          isConnected={isConnected}
+          client={supabaseClient}
+          articles={articles}
+          onSelectArticle={handleSelectArticle}
+        />
+      )}
     </Container>
   );
 }

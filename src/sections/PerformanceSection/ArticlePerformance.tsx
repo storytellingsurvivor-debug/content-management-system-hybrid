@@ -30,11 +30,11 @@ import {
   type ArticleHealth,
   type ArticlePerformance as ArticlePerf,
 } from "@/lib/articlePerformance";
-import { KpiTile } from "./ArticleAnalytics";
+import { KpiTile } from "@/sections/ArticlesSection/ArticleAnalytics";
 import { kpiGridSx, perfTableWrapSx, statsPanelSx } from "./styles";
 
 interface ArticlePerformanceProps {
-  articles: BlogRow[]; // already filtered by status / language / category
+  articles: BlogRow[]; // already filtered by the section's language / status
   viewRows: BlogViewRow[];
   browsers: Map<string, BrowserRow>;
   onSelectArticle: (id: string) => void;
@@ -459,8 +459,7 @@ export function ArticlePerformance({
         sx={{ mt: 1, display: "block" }}
       >
         Robots &amp; bots excluded · one read = one browser per article · click
-        a row to open the article · follows the status / language / category
-        filters above.
+        a row to open the article · follows the language / status filters above.
       </Typography>
     </Box>
   );
