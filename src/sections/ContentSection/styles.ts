@@ -2,6 +2,7 @@ import type { SxProps, Theme } from "@mui/material/styles";
 
 export const sectionPaperSx: SxProps<Theme> = {
   p: 3,
+  mb: 3,
 };
 
 export const contentGridSx: SxProps<Theme> = {

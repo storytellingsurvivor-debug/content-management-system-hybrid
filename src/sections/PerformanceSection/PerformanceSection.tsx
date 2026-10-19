@@ -4,17 +4,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
-  Button,
   Collapse,
   IconButton,
   MenuItem,
   Paper,
   TextField,
   Tooltip,
-  Typography,
 } from "@mui/material";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { BlogRow } from "@/types/blog";
@@ -25,14 +21,18 @@ import {
   type BrowserRow,
 } from "@/lib/blogAnalytics";
 import { fetchBrowsers, fetchViewRows } from "@/lib/blogAnalyticsQueries";
+import { SectionHeader } from "@/components/SectionHeader";
+import type { SectionControls } from "@/lib/sectionLayout";
 import { ArticlePerformance } from "./ArticlePerformance";
-import { filtersRowSx, sectionHeaderRowSx, sectionPaperSx } from "./styles";
+import { filtersRowSx, sectionPaperSx } from "./styles";
 
 interface PerformanceSectionProps {
   isConnected: boolean;
   client: SupabaseClient | null;
   articles: BlogRow[];
   onSelectArticle: (value: string) => void;
+  number?: number;
+  controls: SectionControls;
 }
 
 function language(row: BlogRow): string {
@@ -58,8 +58,10 @@ export function PerformanceSection({
   client,
   articles,
   onSelectArticle,
+  number = 5,
+  controls,
 }: PerformanceSectionProps) {
-  const [open, setOpen] = useState(false);
+  const { open } = controls;
   const [loading, setLoading] = useState(false);
   const [loadedFor, setLoadedFor] = useState<SupabaseClient | null>(null);
   const [viewRows, setViewRows] = useState<BlogViewRow[]>([]);
@@ -136,16 +138,17 @@ export function PerformanceSection({
 
   return (
     <Paper elevation={2} sx={sectionPaperSx}>
-      <Box sx={sectionHeaderRowSx}>
-        <Box>
-          <Typography variant="h6">5. Performance overview</Typography>
-          <Typography variant="body2" color="text.secondary">
+      <SectionHeader
+        title={`${number}. Performance overview`}
+        subtitle={
+          <>
             Every article ranked by readership, with health labels and a
             per-category roll-up. Robots &amp; bots excluded.
-          </Typography>
-        </Box>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          {open && isConnected && (
+          </>
+        }
+        controls={controls}
+        actions={
+          isConnected && (
             <Tooltip title="Reload readership">
               <span>
                 <IconButton onClick={() => void load()} disabled={loading}>
@@ -153,17 +156,9 @@ export function PerformanceSection({
                 </IconButton>
               </span>
             </Tooltip>
-          )}
-          <Button
-            variant="outlined"
-            onClick={() => setOpen((value) => !value)}
-            startIcon={open ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-            aria-expanded={open}
-          >
-            {open ? "Hide" : "Show"}
-          </Button>
-        </Box>
-      </Box>
+          )
+        }
+      />
 
       <Collapse in={open} unmountOnExit>
         {!isConnected ? (

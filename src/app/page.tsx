@@ -15,6 +15,7 @@ import { PerformanceSection } from "@/sections/PerformanceSection/PerformanceSec
 import { TemplateEditorSection } from "@/sections/TemplateEditorSection/TemplateEditorSection";
 import { TemplatesSection } from "@/sections/TemplatesSection/TemplatesSection";
 import { TicketsSection } from "@/sections/TicketsSection/TicketsSection";
+import { useSectionLayout } from "@/lib/sectionLayout";
 import {
   DEFAULT_BLOG_COLUMNS,
   inferColumnsFromRow,
@@ -206,6 +207,8 @@ export default function Home() {
   const [connectionMeta, setConnectionMeta] = useState<string>("idle");
 
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("blog");
+  // Order and show/hide of sections 3+ on the blog tab, remembered per browser.
+  const { order: sectionOrder, sectionFor } = useSectionLayout();
   const [templateColumns, setTemplateColumns] = useState<
     BlogColumnDefinition[]
   >(DEFAULT_TEMPLATE_COLUMNS);
@@ -966,17 +969,49 @@ export default function Home() {
             onRefresh={handleRefresh}
           />
 
-          <ContentSection
-            isConnected={isConnected}
-            brand={connectionValues.brand}
-            isBusy={isSubmitting}
-            mode={editorMode}
-            columns={columns}
-            values={formValues}
-            validationError={validationError}
-            onFieldChange={handleFieldChange}
-            onSubmit={handleSubmit}
-          />
+          {sectionOrder.map((id) => {
+            const { number, controls } = sectionFor(id);
+            if (id === "content") {
+              return (
+                <ContentSection
+                  key={id}
+                  number={number}
+                  controls={controls}
+                  isConnected={isConnected}
+                  brand={connectionValues.brand}
+                  isBusy={isSubmitting}
+                  mode={editorMode}
+                  columns={columns}
+                  values={formValues}
+                  validationError={validationError}
+                  onFieldChange={handleFieldChange}
+                  onSubmit={handleSubmit}
+                />
+              );
+            }
+            if (id === "bucket") {
+              return (
+                <BucketSection
+                  key={id}
+                  number={number}
+                  controls={controls}
+                  isConnected={isConnected}
+                  client={supabaseClient}
+                />
+              );
+            }
+            return (
+              <PerformanceSection
+                key={id}
+                number={number}
+                controls={controls}
+                isConnected={isConnected}
+                client={supabaseClient}
+                articles={articles}
+                onSelectArticle={handleSelectArticle}
+              />
+            );
+          })}
         </>
       )}
 
@@ -1054,14 +1089,12 @@ export default function Home() {
         <VisitsSection isConnected={isConnected} client={supabaseClient} />
       )}
 
-      <BucketSection isConnected={isConnected} client={supabaseClient} />
-
-      {safeTab === "blog" && (
-        <PerformanceSection
+      {/* The blog tab places Bucket among its arrangeable sections above. */}
+      {safeTab !== "blog" && (
+        <BucketSection
           isConnected={isConnected}
           client={supabaseClient}
-          articles={articles}
-          onSelectArticle={handleSelectArticle}
+          controls={sectionFor("bucket", false).controls}
         />
       )}
     </Container>

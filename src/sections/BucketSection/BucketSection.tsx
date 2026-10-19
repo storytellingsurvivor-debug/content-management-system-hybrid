@@ -7,6 +7,7 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Collapse,
   FormControlLabel,
   IconButton,
   Paper,
@@ -20,7 +21,9 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import FolderIcon from "@mui/icons-material/Folder";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { SectionHeader } from "@/components/SectionHeader";
 import { convertImageToWebp, ONE_MB } from "@/lib/imageToWebp";
+import type { SectionControls } from "@/lib/sectionLayout";
 import {
   breadcrumbRowSx,
   entryCardSx,
@@ -28,7 +31,6 @@ import {
   folderButtonSx,
   layoutGridSx,
   panelBoxSx,
-  sectionHeaderRowSx,
   sectionPaperSx,
   thumbBoxSx,
 } from "./styles";
@@ -36,6 +38,8 @@ import {
 interface BucketSectionProps {
   isConnected: boolean;
   client: SupabaseClient | null;
+  number?: number;
+  controls?: SectionControls;
 }
 
 interface StorageEntry {
@@ -61,7 +65,12 @@ function formatBytes(bytes: number): string {
   return `${(bytes / ONE_MB).toFixed(2)} MB`;
 }
 
-export function BucketSection({ isConnected, client }: BucketSectionProps) {
+export function BucketSection({
+  isConnected,
+  client,
+  number = 4,
+  controls,
+}: BucketSectionProps) {
   const [bucket, setBucket] = useState(DEFAULT_BUCKET);
   const [prefix, setPrefix] = useState("");
   const [entries, setEntries] = useState<StorageEntry[]>([]);
@@ -183,260 +192,266 @@ export function BucketSection({ isConnected, client }: BucketSectionProps) {
 
   return (
     <Paper elevation={2} sx={sectionPaperSx}>
-      <Box sx={sectionHeaderRowSx}>
-        <Typography variant="h6">4. Bucket / Media</Typography>
-        <TextField
-          label="Bucket"
-          size="small"
-          value={bucket}
-          onChange={(event) => setBucket(event.target.value)}
-          disabled={!isConnected}
-        />
-      </Box>
+      <SectionHeader
+        title={`${number}. Bucket / Media`}
+        controls={controls}
+        actions={
+          <TextField
+            label="Bucket"
+            size="small"
+            value={bucket}
+            onChange={(event) => setBucket(event.target.value)}
+            disabled={!isConnected}
+          />
+        }
+      />
 
-      {!isConnected ? (
-        <Alert severity="info">
-          Connect to Supabase first to browse and upload bucket media.
-        </Alert>
-      ) : (
-        <Box sx={layoutGridSx}>
-          <Box sx={panelBoxSx}>
-            <Box sx={breadcrumbRowSx}>
-              <Tooltip title="Up one folder">
-                <span>
-                  <IconButton
-                    size="small"
-                    disabled={!prefix || isListing}
-                    onClick={() =>
-                      setPrefix(breadcrumbs.slice(0, -1).join("/"))
-                    }
-                  >
-                    <ArrowUpwardIcon fontSize="small" />
-                  </IconButton>
-                </span>
-              </Tooltip>
-              <Button
-                size="small"
-                variant="text"
-                onClick={() => setPrefix("")}
-                disabled={isListing}
-                sx={{ minWidth: 0, textTransform: "none" }}
-              >
-                {bucket}
-              </Button>
-              {breadcrumbs.map((segment, index) => {
-                const target = breadcrumbs.slice(0, index + 1).join("/");
-                return (
-                  <Box
-                    key={target}
-                    component="span"
-                    sx={{ display: "inline-flex", alignItems: "center" }}
-                  >
-                    <Typography component="span" sx={{ mx: 0.25 }}>
-                      /
-                    </Typography>
-                    <Button
+      {/* Kept mounted while hidden so the folder and upload state survive. */}
+      <Collapse in={controls?.open ?? true}>
+        {!isConnected ? (
+          <Alert severity="info">
+            Connect to Supabase first to browse and upload bucket media.
+          </Alert>
+        ) : (
+          <Box sx={layoutGridSx}>
+            <Box sx={panelBoxSx}>
+              <Box sx={breadcrumbRowSx}>
+                <Tooltip title="Up one folder">
+                  <span>
+                    <IconButton
                       size="small"
-                      variant="text"
-                      onClick={() => setPrefix(target)}
-                      disabled={isListing}
-                      sx={{ minWidth: 0, textTransform: "none" }}
+                      disabled={!prefix || isListing}
+                      onClick={() =>
+                        setPrefix(breadcrumbs.slice(0, -1).join("/"))
+                      }
                     >
-                      {segment}
-                    </Button>
-                  </Box>
-                );
-              })}
-              <Box sx={{ flexGrow: 1 }} />
-              <Tooltip title="Refresh">
-                <span>
-                  <IconButton
-                    size="small"
-                    onClick={() => void loadEntries()}
-                    disabled={isListing}
-                  >
-                    <RefreshIcon fontSize="small" />
-                  </IconButton>
-                </span>
-              </Tooltip>
-            </Box>
-
-            {listError && <Alert severity="error">{listError}</Alert>}
-
-            {isListing ? (
-              <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-                <CircularProgress size={28} />
-              </Box>
-            ) : entries.length === 0 ? (
-              <Alert severity="info">This folder is empty.</Alert>
-            ) : (
-              <Box sx={entryGridSx}>
-                {folders.map((folder) => (
-                  <Button
-                    key={`folder:${folder.name}`}
-                    variant="outlined"
-                    color="inherit"
-                    sx={folderButtonSx}
-                    onClick={() => setPrefix(joinPath(prefix, folder.name))}
-                  >
-                    <FolderIcon />
-                    <Typography
-                      variant="caption"
-                      sx={{ wordBreak: "break-word", textAlign: "center" }}
-                    >
-                      {folder.name}
-                    </Typography>
-                  </Button>
-                ))}
-
-                {files.map((entry) => {
-                  const path = joinPath(prefix, entry.name);
-                  const url = publicUrl(path);
-                  const size = entry.metadata?.size;
+                      <ArrowUpwardIcon fontSize="small" />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+                <Button
+                  size="small"
+                  variant="text"
+                  onClick={() => setPrefix("")}
+                  disabled={isListing}
+                  sx={{ minWidth: 0, textTransform: "none" }}
+                >
+                  {bucket}
+                </Button>
+                {breadcrumbs.map((segment, index) => {
+                  const target = breadcrumbs.slice(0, index + 1).join("/");
                   return (
-                    <Paper key={`file:${entry.name}`} sx={entryCardSx}>
-                      <Box
-                        component="img"
-                        src={url}
-                        alt={entry.name}
-                        loading="lazy"
-                        sx={thumbBoxSx}
-                      />
-                      <Typography
-                        variant="caption"
-                        sx={{ wordBreak: "break-word" }}
-                      >
-                        {entry.name}
+                    <Box
+                      key={target}
+                      component="span"
+                      sx={{ display: "inline-flex", alignItems: "center" }}
+                    >
+                      <Typography component="span" sx={{ mx: 0.25 }}>
+                        /
                       </Typography>
-                      {typeof size === "number" && (
-                        <Typography variant="caption" color="text.secondary">
-                          {formatBytes(size)}
-                        </Typography>
-                      )}
                       <Button
                         size="small"
-                        startIcon={<ContentCopyIcon fontSize="small" />}
-                        onClick={() => void copyToClipboard(url)}
+                        variant="text"
+                        onClick={() => setPrefix(target)}
+                        disabled={isListing}
+                        sx={{ minWidth: 0, textTransform: "none" }}
                       >
-                        {copied === url ? "Copied" : "Copy URL"}
+                        {segment}
                       </Button>
-                    </Paper>
+                    </Box>
                   );
                 })}
+                <Box sx={{ flexGrow: 1 }} />
+                <Tooltip title="Refresh">
+                  <span>
+                    <IconButton
+                      size="small"
+                      onClick={() => void loadEntries()}
+                      disabled={isListing}
+                    >
+                      <RefreshIcon fontSize="small" />
+                    </IconButton>
+                  </span>
+                </Tooltip>
               </Box>
-            )}
-          </Box>
 
-          <Box sx={panelBoxSx}>
-            <Typography variant="subtitle1">Upload image</Typography>
-            <Alert severity="info">
-              Any image is converted to webp and compressed under 1 MB in your
-              browser before upload.
-            </Alert>
+              {listError && <Alert severity="error">{listError}</Alert>}
 
-            <Box sx={{ display: "flex", gap: 1, alignItems: "flex-start" }}>
+              {isListing ? (
+                <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+                  <CircularProgress size={28} />
+                </Box>
+              ) : entries.length === 0 ? (
+                <Alert severity="info">This folder is empty.</Alert>
+              ) : (
+                <Box sx={entryGridSx}>
+                  {folders.map((folder) => (
+                    <Button
+                      key={`folder:${folder.name}`}
+                      variant="outlined"
+                      color="inherit"
+                      sx={folderButtonSx}
+                      onClick={() => setPrefix(joinPath(prefix, folder.name))}
+                    >
+                      <FolderIcon />
+                      <Typography
+                        variant="caption"
+                        sx={{ wordBreak: "break-word", textAlign: "center" }}
+                      >
+                        {folder.name}
+                      </Typography>
+                    </Button>
+                  ))}
+
+                  {files.map((entry) => {
+                    const path = joinPath(prefix, entry.name);
+                    const url = publicUrl(path);
+                    const size = entry.metadata?.size;
+                    return (
+                      <Paper key={`file:${entry.name}`} sx={entryCardSx}>
+                        <Box
+                          component="img"
+                          src={url}
+                          alt={entry.name}
+                          loading="lazy"
+                          sx={thumbBoxSx}
+                        />
+                        <Typography
+                          variant="caption"
+                          sx={{ wordBreak: "break-word" }}
+                        >
+                          {entry.name}
+                        </Typography>
+                        {typeof size === "number" && (
+                          <Typography variant="caption" color="text.secondary">
+                            {formatBytes(size)}
+                          </Typography>
+                        )}
+                        <Button
+                          size="small"
+                          startIcon={<ContentCopyIcon fontSize="small" />}
+                          onClick={() => void copyToClipboard(url)}
+                        >
+                          {copied === url ? "Copied" : "Copy URL"}
+                        </Button>
+                      </Paper>
+                    );
+                  })}
+                </Box>
+              )}
+            </Box>
+
+            <Box sx={panelBoxSx}>
+              <Typography variant="subtitle1">Upload image</Typography>
+              <Alert severity="info">
+                Any image is converted to webp and compressed under 1 MB in your
+                browser before upload.
+              </Alert>
+
+              <Box sx={{ display: "flex", gap: 1, alignItems: "flex-start" }}>
+                <TextField
+                  label="Folder (path)"
+                  placeholder="blog/my-article/cover"
+                  value={uploadPrefix}
+                  onChange={(event) => setUploadPrefix(event.target.value)}
+                  fullWidth
+                />
+                <Button
+                  variant="outlined"
+                  onClick={() => setUploadPrefix(prefix)}
+                  sx={{ whiteSpace: "nowrap", mt: 1 }}
+                >
+                  Use current
+                </Button>
+              </Box>
+
               <TextField
-                label="Folder (path)"
-                placeholder="blog/my-article/cover"
-                value={uploadPrefix}
-                onChange={(event) => setUploadPrefix(event.target.value)}
+                label="File name (without extension)"
+                placeholder="cover"
+                value={fileName}
+                onChange={(event) => setFileName(event.target.value)}
+                helperText=".webp is added automatically"
                 fullWidth
               />
-              <Button
-                variant="outlined"
-                onClick={() => setUploadPrefix(prefix)}
-                sx={{ whiteSpace: "nowrap", mt: 1 }}
-              >
-                Use current
-              </Button>
-            </Box>
 
-            <TextField
-              label="File name (without extension)"
-              placeholder="cover"
-              value={fileName}
-              onChange={(event) => setFileName(event.target.value)}
-              helperText=".webp is added automatically"
-              fullWidth
-            />
-
-            <Button variant="outlined" component="label">
-              {file ? `Selected: ${file.name}` : "Choose image"}
-              <input
-                type="file"
-                hidden
-                accept="image/*"
-                onChange={(event) => {
-                  const next = event.target.files?.[0] ?? null;
-                  setFile(next);
-                  setUploadError(null);
-                  setUploadInfo(null);
-                  setUploadedUrl(null);
-                }}
-              />
-            </Button>
-
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={overwrite}
-                  onChange={(event) => setOverwrite(event.target.checked)}
-                />
-              }
-              label="Overwrite if a file with the same path exists"
-            />
-
-            <Box>
-              <Button
-                variant="contained"
-                onClick={() => void handleUpload()}
-                disabled={isUploading}
-                startIcon={
-                  isUploading ? <CircularProgress size={16} /> : undefined
-                }
-              >
-                {isUploading ? "Uploading..." : "Convert & Upload"}
-              </Button>
-            </Box>
-
-            {uploadError && <Alert severity="error">{uploadError}</Alert>}
-            {uploadInfo && <Alert severity="success">{uploadInfo}</Alert>}
-
-            {uploadedUrl && (
-              <Paper variant="outlined" sx={{ p: 1.5 }}>
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    mb: 1,
+              <Button variant="outlined" component="label">
+                {file ? `Selected: ${file.name}` : "Choose image"}
+                <input
+                  type="file"
+                  hidden
+                  accept="image/*"
+                  onChange={(event) => {
+                    const next = event.target.files?.[0] ?? null;
+                    setFile(next);
+                    setUploadError(null);
+                    setUploadInfo(null);
+                    setUploadedUrl(null);
                   }}
+                />
+              </Button>
+
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={overwrite}
+                    onChange={(event) => setOverwrite(event.target.checked)}
+                  />
+                }
+                label="Overwrite if a file with the same path exists"
+              />
+
+              <Box>
+                <Button
+                  variant="contained"
+                  onClick={() => void handleUpload()}
+                  disabled={isUploading}
+                  startIcon={
+                    isUploading ? <CircularProgress size={16} /> : undefined
+                  }
                 >
-                  <Chip label="Public URL" size="small" color="success" />
-                  <Box sx={{ flexGrow: 1 }} />
-                  <Button
-                    size="small"
-                    startIcon={<ContentCopyIcon fontSize="small" />}
-                    onClick={() => void copyToClipboard(uploadedUrl)}
+                  {isUploading ? "Uploading..." : "Convert & Upload"}
+                </Button>
+              </Box>
+
+              {uploadError && <Alert severity="error">{uploadError}</Alert>}
+              {uploadInfo && <Alert severity="success">{uploadInfo}</Alert>}
+
+              {uploadedUrl && (
+                <Paper variant="outlined" sx={{ p: 1.5 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      mb: 1,
+                    }}
                   >
-                    {copied === uploadedUrl ? "Copied" : "Copy"}
-                  </Button>
-                </Box>
-                <Typography
-                  variant="body2"
-                  sx={{ wordBreak: "break-all" }}
-                  component="a"
-                  href={uploadedUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {uploadedUrl}
-                </Typography>
-              </Paper>
-            )}
+                    <Chip label="Public URL" size="small" color="success" />
+                    <Box sx={{ flexGrow: 1 }} />
+                    <Button
+                      size="small"
+                      startIcon={<ContentCopyIcon fontSize="small" />}
+                      onClick={() => void copyToClipboard(uploadedUrl)}
+                    >
+                      {copied === uploadedUrl ? "Copied" : "Copy"}
+                    </Button>
+                  </Box>
+                  <Typography
+                    variant="body2"
+                    sx={{ wordBreak: "break-all" }}
+                    component="a"
+                    href={uploadedUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {uploadedUrl}
+                  </Typography>
+                </Paper>
+              )}
+            </Box>
           </Box>
-        </Box>
-      )}
+        )}
+      </Collapse>
     </Paper>
   );
 }

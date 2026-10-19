@@ -8,14 +8,6 @@ export const sectionPaperSx: SxProps<Theme> = {
   mb: 3,
 };
 
-export const sectionHeaderRowSx: SxProps<Theme> = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 2,
-  flexWrap: "wrap",
-};
-
 export const filtersRowSx: SxProps<Theme> = {
   mt: 2,
   display: "grid",

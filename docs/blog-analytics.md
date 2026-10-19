@@ -70,8 +70,8 @@ summarises every article at once.
 
 ## Performance overview (global ranking)
 
-Its own section, **5. Performance overview**, at the bottom of the Blog
-articles tab (after Bucket / Media). Readership answers "how is *this* article
+Its own section, **Performance overview** (5 by default), on the Blog
+articles tab. Readership answers "how is *this* article
 doing"; this one answers "how are *all* my articles doing" in one screen.
 
 It is closed by default and only fetches `blog_views` / `browsers` the first
@@ -112,11 +112,22 @@ No UTM breakdown and no referrer domains: neither is stored. `url_source` is the
 closest signal available. Adding real acquisition data means changing what the
 **public site** records, not adding a second tracking pipeline in the CMS.
 
+## Section layout
+
+On the Blog articles tab, the sections after **2. Articles & readership** —
+Content, Bucket / Media and Performance overview — each have **Show / Hide**
+and **move up / move down** controls. Their numbers follow the order. Order and
+open/closed state are remembered per browser (`localStorage`, see
+`src/lib/sectionLayout.ts`); hidden Content and Bucket stay mounted, so a
+half-edited article or an open folder survives hiding. On the other tabs
+Bucket / Media keeps its usual place, with Show / Hide only.
+
 ## Checks
 
 ```
 node --experimental-strip-types src/lib/blogAnalytics.check.ts
 node --experimental-strip-types src/lib/articlePerformance.check.ts
+node --experimental-strip-types src/lib/sectionLayout.check.ts
 node --experimental-strip-types src/lib/blogFormSchema.check.ts
 ```
 
