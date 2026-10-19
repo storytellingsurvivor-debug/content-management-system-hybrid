@@ -33,6 +33,7 @@ import { ArticlePerformance } from "./ArticlePerformance";
 import {
   controlsGridSx,
   infoRowSx,
+  overviewWrapSx,
   scrollRowSx,
   sectionHeaderSx,
   sectionPaperSx,
@@ -441,6 +442,33 @@ export function ArticlesSection({
             </Alert>
           )}
 
+          {/* Global view of every filtered article — sits above the cards,
+              apart from the per-article readership panel below them. */}
+          {statsAvailable && articles.length > 0 && (
+            <Paper variant="outlined" sx={overviewWrapSx}>
+              <Button
+                onClick={() => setShowPerformance((open) => !open)}
+                startIcon={
+                  showPerformance ? <ExpandLessIcon /> : <ExpandMoreIcon />
+                }
+                sx={{ textTransform: "none" }}
+                aria-expanded={showPerformance}
+              >
+                {showPerformance ? "Hide" : "Show"} performance overview · all{" "}
+                {visibleArticles.length} article(s) · ranking, health &amp;
+                categories
+              </Button>
+              <Collapse in={showPerformance} unmountOnExit>
+                <ArticlePerformance
+                  articles={visibleArticles}
+                  viewRows={viewRows}
+                  browsers={browsers}
+                  onSelectArticle={(id) => onSelectArticle(`id:${id}`)}
+                />
+              </Collapse>
+            </Paper>
+          )}
+
           {visibleArticles.length > 0 && (
             <Box sx={scrollRowSx} role="listbox" aria-label="Articles">
               {visibleArticles.map((article) => {
@@ -491,28 +519,6 @@ export function ArticlesSection({
                 <ArticleAnalytics
                   title={panel.title}
                   analytics={panel.analytics}
-                />
-              </Collapse>
-
-              <Box>
-                <Button
-                  onClick={() => setShowPerformance((open) => !open)}
-                  startIcon={
-                    showPerformance ? <ExpandLessIcon /> : <ExpandMoreIcon />
-                  }
-                  sx={{ textTransform: "none" }}
-                  aria-expanded={showPerformance}
-                >
-                  {showPerformance ? "Hide" : "Show"} performance overview ·
-                  ranking &amp; categories
-                </Button>
-              </Box>
-              <Collapse in={showPerformance} unmountOnExit>
-                <ArticlePerformance
-                  articles={visibleArticles}
-                  viewRows={viewRows}
-                  browsers={browsers}
-                  onSelectArticle={(id) => onSelectArticle(`id:${id}`)}
                 />
               </Collapse>
             </Box>

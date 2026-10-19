@@ -70,8 +70,10 @@ summarises every article at once.
 
 ## Performance overview (global ranking)
 
-A second collapsible panel, **Show performance overview**, sits under the
-readership panel. Readership answers "how is *this* article doing"; this one
+A framed collapsible block, **Show performance overview**, sits at the top of
+the tab — between the filter chips and the article cards — because it covers
+every (filtered) article, unlike the per-article readership panel under the
+cards. Readership answers "how is *this* article doing"; this one
 answers "how are *all* my articles doing" in one screen. It follows the
 status / language / category filters above, excludes robots & bots, and is
 computed in `src/lib/articlePerformance.ts` from the same rows (no extra query).
