@@ -68,6 +68,40 @@ summarises every article at once.
 - **Devices** — `browsers.device`, falling back to the parsed UA when empty.
 - **Traffic sources / Landing URLs** — host and raw value of `browsers.url_source`.
 
+## Performance overview (global ranking)
+
+A second collapsible panel, **Show performance overview**, sits under the
+readership panel. Readership answers "how is *this* article doing"; this one
+answers "how are *all* my articles doing" in one screen. It follows the
+status / language / category filters above, excludes robots & bots, and is
+computed in `src/lib/articlePerformance.ts` from the same rows (no extra query).
+
+- **KPIs** — articles, reads, reads in the last 30 days, reads per article, and
+  **Live but dormant** (online and nobody reads them).
+- **By category** — articles, live, reads, reads / article, reads / week,
+  last 30 days, dormant count and best article. Click a row to narrow the
+  ranking to that category.
+- **Ranking** — one row per article, sortable by any metric. Click a row to
+  open the article in the editor. **Export CSV** downloads the current view.
+  - *Reads / week* = reads ÷ weeks online (min. 1 week). Default sort: it is
+    fair to old articles and recent ones alike, unlike raw reads.
+  - *Online* = days since `published_at`, falling back to `created_at`.
+  - *Trend* = last 30 days vs the 30 days before.
+- **Health** labels (chips are also filters):
+
+| label   | rule                                                            |
+| ------- | --------------------------------------------------------------- |
+| New     | online < 14 days — too early to judge                            |
+| Dormant | no human read for 60+ days, or never read                        |
+| Top     | upper quartile of reads / week, and read in the last 30 days     |
+| Rising  | ≥ 3 reads in the last 30 days and ≥ 1.5× the 30 days before      |
+| Fading  | ≥ 3 reads in the previous 30 days and now ≤ half of that         |
+| Steady  | everything else                                                  |
+
+Limits: the CMS loads the newest 20 000 `blog_views` rows, so all-time totals
+on a very large table cover that window only. Reads are first reads per browser
+(`blog_views` is de-duplicated), not page hits.
+
 ## What it deliberately does not do
 
 No UTM breakdown and no referrer domains: neither is stored. `url_source` is the
@@ -78,6 +112,7 @@ closest signal available. Adding real acquisition data means changing what the
 
 ```
 node --experimental-strip-types src/lib/blogAnalytics.check.ts
+node --experimental-strip-types src/lib/articlePerformance.check.ts
 node --experimental-strip-types src/lib/blogFormSchema.check.ts
 ```
 

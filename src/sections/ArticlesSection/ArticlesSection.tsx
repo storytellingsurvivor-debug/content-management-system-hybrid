@@ -29,6 +29,7 @@ import {
 } from "@/lib/blogAnalytics";
 import { ArticleAnalytics } from "./ArticleAnalytics";
 import { ArticleCard } from "./ArticleCard";
+import { ArticlePerformance } from "./ArticlePerformance";
 import {
   controlsGridSx,
   infoRowSx,
@@ -153,6 +154,7 @@ export function ArticlesSection({
   const [statsError, setStatsError] = useState<string | null>(null);
   const [statsAvailable, setStatsAvailable] = useState(true);
   const [showStats, setShowStats] = useState(false);
+  const [showPerformance, setShowPerformance] = useState(false);
 
   // Every setState here runs after an await, so mounting this section never
   // triggers a cascading render. Stale rows from a previous connection are
@@ -489,6 +491,28 @@ export function ArticlesSection({
                 <ArticleAnalytics
                   title={panel.title}
                   analytics={panel.analytics}
+                />
+              </Collapse>
+
+              <Box>
+                <Button
+                  onClick={() => setShowPerformance((open) => !open)}
+                  startIcon={
+                    showPerformance ? <ExpandLessIcon /> : <ExpandMoreIcon />
+                  }
+                  sx={{ textTransform: "none" }}
+                  aria-expanded={showPerformance}
+                >
+                  {showPerformance ? "Hide" : "Show"} performance overview ·
+                  ranking &amp; categories
+                </Button>
+              </Box>
+              <Collapse in={showPerformance} unmountOnExit>
+                <ArticlePerformance
+                  articles={visibleArticles}
+                  viewRows={viewRows}
+                  browsers={browsers}
+                  onSelectArticle={(id) => onSelectArticle(`id:${id}`)}
                 />
               </Collapse>
             </Box>

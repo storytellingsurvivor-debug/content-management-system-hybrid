@@ -199,3 +199,9 @@ export const sparklineRowSx: SxProps<Theme> = {
   height: 100,
   mt: 1.5,
 };
+
+// Global performance ranking tables — scroll inside, never the page.
+export const perfTableWrapSx: SxProps<Theme> = {
+  maxHeight: 480,
+  overflowX: "auto",
+};
