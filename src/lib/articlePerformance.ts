@@ -1,7 +1,6 @@
 import type { BlogRow } from "../types/blog";
 import {
   isBotView,
-  isTrue,
   type BlogViewRow,
   type BrowserRow,
 } from "./blogAnalytics";
@@ -45,7 +44,6 @@ export interface ArticlePerformance {
   readsLast7Days: number;
   readsLast30Days: number;
   readsPrev30Days: number; // 30–60 days ago, for the trend
-  likes: number;
   lastReadAt: string | null;
   daysSinceLastRead: number | null; // null = never read
   readsPerWeek: number; // reads normalised by time online
@@ -132,12 +130,10 @@ export function computeArticlePerformance(
     let readsLast7Days = 0;
     let readsLast30Days = 0;
     let readsPrev30Days = 0;
-    let likes = 0;
     let lastReadMs: number | null = null;
     let lastReadAt: string | null = null;
     const rows = rowsById.get(id) ?? [];
     for (const row of rows) {
-      if (isTrue(row.has_liked)) likes += 1;
       const t = parseTime(row.created_at);
       if (t == null) continue;
       const age = now - t;
@@ -174,7 +170,6 @@ export function computeArticlePerformance(
         readsLast7Days,
         readsLast30Days,
         readsPrev30Days,
-        likes,
         lastReadAt,
         daysSinceLastRead:
           lastReadMs == null
@@ -284,7 +279,6 @@ export function performanceToCsv(rows: ArticlePerformance[]): string {
     "reads_30d",
     "reads_prev_30d",
     "trend_percent",
-    "likes",
     "last_read_at",
     "days_since_last_read",
     "health",
@@ -309,7 +303,6 @@ export function performanceToCsv(rows: ArticlePerformance[]): string {
       a.readsLast30Days,
       a.readsPrev30Days,
       a.trendPercent,
-      a.likes,
       a.lastReadAt,
       a.daysSinceLastRead,
       a.health,

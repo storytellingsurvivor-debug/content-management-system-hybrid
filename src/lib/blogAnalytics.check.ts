@@ -32,10 +32,10 @@ const daysAgo = (n: number) =>
   new Date(now - n * 24 * 60 * 60 * 1000).toISOString();
 
 const rows: BlogViewRow[] = [
-  { blog_id: 1, browser_signature: "a", has_liked: "true", created_at: daysAgo(1) },
-  { blog_id: 2, browser_signature: "a", has_liked: "false", created_at: daysAgo(3) },
-  { blog_id: 1, browser_signature: "b", has_liked: "false", created_at: daysAgo(10) },
-  { blog_id: 1, browser_signature: "c", has_liked: "false", created_at: daysAgo(0) },
+  { blog_id: 1, browser_signature: "a", created_at: daysAgo(1) },
+  { blog_id: 2, browser_signature: "a", created_at: daysAgo(3) },
+  { blog_id: 1, browser_signature: "b", created_at: daysAgo(10) },
+  { blog_id: 1, browser_signature: "c", created_at: daysAgo(0) },
 ];
 
 const browsers = new Map<string, BrowserRow>([
@@ -65,7 +65,6 @@ const all = computeBlogAnalytics(rows, browsers);
 
 assert.equal(all.readers, 4, "one row per (article, browser)");
 assert.equal(all.uniqueVisitors, 3, "distinct browser_signature");
-assert.equal(all.likes, 1, 'has_liked is text "true"');
 assert.equal(all.readersLast7Days, 3);
 assert.equal(all.readersLast30Days, 4);
 
@@ -86,7 +85,6 @@ const scoped = computeBlogAnalytics(
   browsers,
 );
 assert.equal(scoped.readers, 3);
-assert.equal(scoped.likes, 1);
 
 assert.equal(all.perDay.length, 30, "dense 30-day series");
 assert.equal(

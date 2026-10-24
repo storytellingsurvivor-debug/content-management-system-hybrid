@@ -85,7 +85,7 @@ const read = (
   });
 
 for (let i = 0; i < 20; i += 1) read(1, i % 40);
-read(1, 1, { has_liked: "true" });
+read(1, 1);
 read(2, 90);
 for (let i = 0; i < 6; i += 1) read(5, 40 + i);
 read(5, 5);
@@ -111,7 +111,6 @@ assert.equal(perf[0].id, "1", "highest velocity ranks first");
 
 const star = byId.get("1")!;
 assert.equal(star.reads, 21);
-assert.equal(star.likes, 1);
 assert.equal(star.ageDays, 70);
 assert.equal(star.readsPerWeek, 2.1, "21 reads over 10 weeks");
 assert.equal(star.daysSinceLastRead, 0);

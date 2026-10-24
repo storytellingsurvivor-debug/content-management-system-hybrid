@@ -82,8 +82,7 @@ type SortKey =
   | "readsLast30Days"
   | "trendPercent"
   | "ageDays"
-  | "daysSinceLastRead"
-  | "likes";
+  | "daysSinceLastRead";
 
 const COLUMNS: { key: SortKey; label: string; hint: string }[] = [
   {
@@ -112,7 +111,6 @@ const COLUMNS: { key: SortKey; label: string; hint: string }[] = [
     label: "Last read",
     hint: "Days since the latest human read",
   },
-  { key: "likes", label: "Likes", hint: "has_liked = true" },
 ];
 
 // Missing values (never read, no baseline…) always sort last.
@@ -445,7 +443,6 @@ export function ArticlePerformance({
                   >
                     {formatDays(a.daysSinceLastRead, "never")}
                   </TableCell>
-                  <TableCell align="right">{a.likes}</TableCell>
                 </TableRow>
               );
             })}
