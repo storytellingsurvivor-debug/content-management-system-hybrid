@@ -127,7 +127,6 @@ export function ArticleAnalytics({ title, analytics }: ArticleAnalyticsProps) {
       <Box sx={kpiGridSx}>
         <KpiTile label="Reads" value={analytics.readers} />
         <KpiTile label="Unique visitors" value={analytics.uniqueVisitors} />
-        <KpiTile label="Likes" value={analytics.likes} />
         <KpiTile label="Last 7 days" value={analytics.readersLast7Days} />
         <KpiTile label="Last 30 days" value={analytics.readersLast30Days} />
       </Box>

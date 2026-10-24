@@ -23,7 +23,7 @@ not "one page hit". Repeat visits are never double-counted.
 | `blog_id`           | points at `blog.id` (a specific language row)  |
 | `browser_signature` | opaque visitor id, joins to `browsers`         |
 | `has_viewed`        | text `"true"` / `"false"`                      |
-| `has_liked`         | text `"true"` / `"false"`                      |
+| `has_liked`         | not used — the blog pages only record views    |
 | `created_at`        | first read timestamp                           |
 
 `browsers` — one row per visitor browser, written on first visit.
@@ -61,7 +61,6 @@ summarises every article at once.
 
 - **Reads** — rows in `blog_views` (scoped to the selected article).
 - **Unique visitors** — distinct `browser_signature`.
-- **Likes** — rows with `has_liked = "true"`.
 - **First reads · last 30 days** — daily buckets of `created_at`. It is a *first
   read* series by construction, since a row is only inserted once per browser.
 - **Browsers / Operating systems** — derived from `browsers.user_agent`.

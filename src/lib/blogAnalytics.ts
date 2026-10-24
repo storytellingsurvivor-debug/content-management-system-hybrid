@@ -6,6 +6,7 @@ import { parseUserAgent } from "./userAgent";
 // two tables — we only READ them here, no new table and no tracker:
 //
 //   blog_views(id, blog_id, browser_signature, has_viewed, has_liked, created_at)
+//     (`has_liked` is not used: the blog pages only record views.)
 //     one row per (article, browser) — the site de-duplicates on insert, so a
 //     row means "this browser read this article", not "one page hit".
 //   browsers(browser_signature, device, user_agent, url_source, created_at)
@@ -22,7 +23,6 @@ export interface BlogViewRow {
   blog_id?: number | string | null;
   browser_signature?: string | null;
   has_viewed?: string | boolean | null;
-  has_liked?: string | boolean | null;
   created_at?: string | null;
 }
 
@@ -48,7 +48,6 @@ export interface DayBucket {
 export interface BlogAnalytics {
   readers: number; // rows = unique (article, browser) pairs
   uniqueVisitors: number; // distinct browser_signature
-  likes: number;
   readersLast7Days: number;
   readersLast30Days: number;
   lastViewedAt: string | null;
@@ -188,7 +187,6 @@ export function computeBlogAnalytics(
   return {
     readers: rows.length,
     uniqueVisitors: signatures.size,
-    likes: rows.filter((row) => isTrue(row.has_liked)).length,
     readersLast7Days: countSince(rows, now - 7 * day),
     readersLast30Days: countSince(rows, now - 30 * day),
     lastViewedAt,
