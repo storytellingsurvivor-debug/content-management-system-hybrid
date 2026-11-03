@@ -16,7 +16,114 @@ const LONG_TEXT_FIELDS = new Set([
   "metadata_description",
   "hero_bubble_message",
   "markdown_content",
+  "final_cta_text",
+  "done_for_you_text",
+  "proof_note",
 ]);
+
+// --- Audience page wording + guided defaults (Happy-Milo) ------------------
+// Allowed values mirror the CHECK constraints of migration
+// 20261104120000_add_audience_page_content_fields (happy-milo-core). Keep
+// both in sync: a value outside these lists is refused by the database.
+
+export interface SelectOption {
+  value: string;
+  label: string;
+}
+
+export const AUDIENCE_CATEGORY_OPTIONS: SelectOption[] = [
+  { value: "birthday", label: "Birthday" },
+  { value: "creator", label: "Creator / streamer" },
+  { value: "farewell", label: "Farewell / retirement" },
+  { value: "wedding", label: "Wedding" },
+  { value: "anniversary", label: "Wedding anniversary" },
+  { value: "family", label: "Family day (Mother's, Father's, name day)" },
+  { value: "holiday", label: "Public holiday (14 July…)" },
+  { value: "community", label: "Community event (music day…)" },
+  { value: "company", label: "Company milestone" },
+  { value: "thank_you", label: "Thank you" },
+  { value: "congratulations", label: "Congratulations" },
+  { value: "other", label: "Other" },
+];
+
+// "" = no preselection (stored as NULL).
+export const GUIDED_OCCASION_OPTIONS: SelectOption[] = [
+  { value: "", label: "None, the user chooses" },
+  { value: "birthday", label: "Birthday" },
+  { value: "farewell", label: "Farewell" },
+  { value: "congratulations", label: "Congratulations" },
+  { value: "wedding", label: "Wedding / anniversary" },
+  { value: "thank_you", label: "Thank you" },
+  { value: "just_because", label: "Just because" },
+  { value: "community", label: "Creator / community milestone" },
+  { value: "other", label: "Other" },
+];
+
+export const GUIDED_SUBJECT_TYPE_OPTIONS: SelectOption[] = [
+  { value: "", label: "None, the user chooses" },
+  { value: "person", label: "Person" },
+  { value: "creator_channel", label: "Creator / channel" },
+  { value: "company", label: "Company" },
+  { value: "association_community", label: "Association / community" },
+  { value: "team", label: "Team" },
+  { value: "other", label: "Other" },
+];
+
+export const TEMPLATE_SELECT_OPTIONS: Record<string, SelectOption[]> = {
+  category: AUDIENCE_CATEGORY_OPTIONS,
+  guided_occasion: GUIDED_OCCASION_OPTIONS,
+  guided_subject_type: GUIDED_SUBJECT_TYPE_OPTIONS,
+};
+
+/** Short explanations shown under the audience fields in the editor. */
+export const TEMPLATE_FIELD_HELP: Record<string, string> = {
+  category:
+    "Page family. Shows the Twitch/Slack integrations for creator and farewell pages, and the \"celebration\" wording for holiday and community pages.",
+  guided_occasion: "Preselected in /happy-wall/create when people click the page's button.",
+  guided_subject_type: "Preselected \"who is it for\". Leave None when it can be anyone (e.g. 14 July).",
+  cta_label: "Hero button and final button. Empty: \"Create the Happy Wall\".",
+  final_cta_title: "Last section title. Empty: generic title.",
+  final_cta_text: "Last section text. Empty: generic text.",
+  done_for_you_title: "Title of the \"I'd like some help\" block. Empty: generic.",
+  done_for_you_text: "Text of the \"I'd like some help\" block. Empty: generic.",
+  proof_title: "Heading above the video reactions. Empty: \"Happy Wall, for real\".",
+  proof_note:
+    "Line under that heading. Empty: no line. Use it when the videos come from other celebrations.",
+  use_cases_title: "Title of the \"who it's for\" block.",
+  use_cases: "One per line (e.g. \"With your family\"). Empty list: block hidden.",
+};
+
+const NULLABLE_SELECTS = new Set(["guided_occasion", "guided_subject_type"]);
+const LINE_LIST_FIELDS = new Set(["use_cases"]);
+
+/**
+ * Editor values -> what the database accepts for the audience fields:
+ * "" selects become NULL (CHECK constraints), category falls back to
+ * "other", and the use-case list goes back to a JSON array (one per line,
+ * commas allowed inside an item).
+ */
+export function normalizeTemplatePayload(
+  payload: Record<string, unknown>,
+): Record<string, unknown> {
+  const next = { ...payload };
+  for (const name of NULLABLE_SELECTS) {
+    if (name in next && (next[name] === "" || next[name] === undefined)) {
+      next[name] = null;
+    }
+  }
+  if ("category" in next && !String(next.category ?? "").trim()) {
+    next.category = "other";
+  }
+  for (const name of LINE_LIST_FIELDS) {
+    if (!(name in next)) continue;
+    const raw = next[name];
+    const lines = Array.isArray(raw)
+      ? raw.map((item) => String(item))
+      : String(raw ?? "").split("\n");
+    next[name] = lines.map((line) => line.trim()).filter(Boolean);
+  }
+  return next;
+}
 
 const TEMPLATE_OVERRIDES: Record<
   string,
@@ -28,6 +135,10 @@ const TEMPLATE_OVERRIDES: Record<
   uploaded_image_url: { uiType: "url" },
   markdown_content: { uiType: "markdown" },
   faq: { uiType: "faq" },
+  category: { uiType: "select" },
+  guided_occasion: { uiType: "select" },
+  guided_subject_type: { uiType: "select" },
+  use_cases: { uiType: "stringArray" },
   slug: { required: true },
   language: { required: true },
   brand: { required: true },
@@ -154,6 +265,18 @@ export const DEFAULT_TEMPLATE_COLUMNS: BlogColumnDefinition[] = [
     required: false,
     readOnly: false,
   },
+  { name: "category", label: "Category", uiType: "select", required: false, readOnly: false },
+  { name: "guided_occasion", label: "Guided Occasion", uiType: "select", required: false, readOnly: false },
+  { name: "guided_subject_type", label: "Guided Subject Type", uiType: "select", required: false, readOnly: false },
+  { name: "cta_label", label: "CTA Label", uiType: "text", required: false, readOnly: false },
+  { name: "final_cta_title", label: "Final CTA Title", uiType: "text", required: false, readOnly: false },
+  { name: "final_cta_text", label: "Final CTA Text", uiType: "text", required: false, readOnly: false },
+  { name: "done_for_you_title", label: "Done For You Title", uiType: "text", required: false, readOnly: false },
+  { name: "done_for_you_text", label: "Done For You Text", uiType: "text", required: false, readOnly: false },
+  { name: "proof_title", label: "Proof Title", uiType: "text", required: false, readOnly: false },
+  { name: "proof_note", label: "Proof Note", uiType: "text", required: false, readOnly: false },
+  { name: "use_cases_title", label: "Use Cases Title", uiType: "text", required: false, readOnly: false },
+  { name: "use_cases", label: "Use Cases", uiType: "stringArray", required: false, readOnly: false },
 ];
 
 export function isLongTextField(name: string): boolean {
@@ -224,6 +347,24 @@ export function validateTemplatePayload(
   // brand only exists on multi-brand DBs; require it only when the column is there.
   if ("brand" in payload && !String(payload.brand ?? "").trim()) {
     return "Brand is required.";
+  }
+
+  const allowed = (options: SelectOption[]) =>
+    new Set(options.map((option) => option.value).filter(Boolean));
+  if ("category" in payload && !allowed(AUDIENCE_CATEGORY_OPTIONS).has(String(payload.category))) {
+    return `Category must be one of: ${[...allowed(AUDIENCE_CATEGORY_OPTIONS)].join(", ")}.`;
+  }
+  for (const [name, options] of [
+    ["guided_occasion", GUIDED_OCCASION_OPTIONS],
+    ["guided_subject_type", GUIDED_SUBJECT_TYPE_OPTIONS],
+  ] as const) {
+    const value = payload[name];
+    if (value !== null && value !== undefined && !allowed(options).has(String(value))) {
+      return `${name} must be empty or one of: ${[...allowed(options)].join(", ")}.`;
+    }
+  }
+  if ("use_cases" in payload && !Array.isArray(payload.use_cases)) {
+    return "Use Cases must be a list.";
   }
 
   const url = payload.uploaded_image_url;
