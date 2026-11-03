@@ -31,6 +31,7 @@ import {
   DEFAULT_TEMPLATE_COLUMNS,
   findDuplicateTemplate,
   inferTemplateColumns,
+  normalizeTemplatePayload,
   TEMPLATE_TABLE,
   validateTemplatePayload,
 } from "@/lib/templateFormSchema";
@@ -722,7 +723,10 @@ export default function Home() {
       return;
     }
 
-    const payload = toWritablePayload(templateFormValues, templateColumns);
+    // Audience fields: "" selects -> NULL, list text -> JSON array.
+    const payload = normalizeTemplatePayload(
+      toWritablePayload(templateFormValues, templateColumns),
+    );
 
     if (action !== "delete") {
       const validationMessage = validateTemplatePayload(payload);

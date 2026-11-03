@@ -20,7 +20,9 @@ import type {
 } from "@/types/blog";
 import {
   isLongTextField,
+  TEMPLATE_FIELD_HELP,
   TEMPLATE_LANGUAGE_OPTIONS,
+  TEMPLATE_SELECT_OPTIONS,
 } from "@/lib/templateFormSchema";
 import { FaqField } from "@/components/FaqField";
 import {
@@ -86,10 +88,32 @@ const FIELD_GROUPS: FieldGroup[] = [
     title: "FAQ",
     fields: ["faq"],
   },
+  {
+    title: "Guided creation (what /happy-wall/create preselects)",
+    fields: ["category", "guided_occasion", "guided_subject_type"],
+  },
+  {
+    title: "Buttons and final section",
+    fields: ["cta_label", "final_cta_title", "final_cta_text"],
+  },
+  {
+    title: "I'd like some help (done for you)",
+    fields: ["done_for_you_title", "done_for_you_text"],
+  },
+  {
+    title: "Video reactions",
+    fields: ["proof_title", "proof_note"],
+  },
+  {
+    title: "Who it's for",
+    fields: ["use_cases_title", "use_cases"],
+  },
 ];
 
 function fieldValue(value: unknown): string {
   if (typeof value === "string") return value;
+  // jsonb string lists (use_cases) are edited one item per line.
+  if (Array.isArray(value)) return value.map((item) => String(item)).join("\n");
   if (typeof value === "number") return String(value);
   if (typeof value === "boolean") return String(value);
   return "";
@@ -162,6 +186,10 @@ export function TemplateEditorSection({
   const isActive = values.is_active !== false;
   const imageUrl = String(values.uploaded_image_url ?? "").trim();
   const validImageUrl = isHttpUrl(imageUrl) ? imageUrl : "";
+  // Same fallbacks as happy-milo-core (useAudienceCopy).
+  const ctaLabel = String(values.cta_label ?? "").trim() || "Create the Happy Wall";
+  const finalTitle = String(values.final_cta_title ?? "").trim();
+  const hasAudienceFields = "cta_label" in values || "category" in values;
 
   const renderField = (column: BlogColumnDefinition) => {
     const value = values[column.name];
@@ -195,6 +223,45 @@ export function TemplateEditorSection({
           label={column.label}
           value={value}
           onChange={(next) => onFieldChange(column.name, next)}
+        />
+      );
+    }
+
+    const selectOptions = TEMPLATE_SELECT_OPTIONS[column.name];
+    if (column.uiType === "select" && selectOptions) {
+      return (
+        <TextField
+          key={column.name}
+          select
+          label={column.label}
+          value={fieldValue(value) || (column.name === "category" ? "other" : "")}
+          onChange={(event) => onFieldChange(column.name, event.target.value)}
+          helperText={TEMPLATE_FIELD_HELP[column.name]}
+          slotProps={{ input: { readOnly: isReadOnly }, inputLabel: { shrink: true } }}
+          fullWidth
+        >
+          {selectOptions.map((option) => (
+            <MenuItem key={option.value || "none"} value={option.value}>
+              {option.label}
+            </MenuItem>
+          ))}
+        </TextField>
+      );
+    }
+
+    if (column.uiType === "stringArray") {
+      return (
+        <TextField
+          key={column.name}
+          label={column.label}
+          value={fieldValue(value)}
+          // Kept as text while typing; turned back into a list on save.
+          onChange={(event) => onFieldChange(column.name, event.target.value)}
+          helperText={TEMPLATE_FIELD_HELP[column.name] ?? "One value per line"}
+          slotProps={{ input: { readOnly: isReadOnly } }}
+          multiline
+          minRows={3}
+          fullWidth
         />
       );
     }
@@ -249,6 +316,7 @@ export function TemplateEditorSection({
           )
         }
         required={column.required}
+        helperText={TEMPLATE_FIELD_HELP[column.name]}
         slotProps={{ input: { readOnly: isReadOnly } }}
         multiline={multiline}
         rows={rows}
@@ -383,6 +451,17 @@ export function TemplateEditorSection({
                     </Paper>
                   )}
 
+                  {hasAudienceFields && (
+                    <Box sx={{ mb: 2 }}>
+                      <Button variant="contained" size="small" disableElevation tabIndex={-1}>
+                        {ctaLabel}
+                      </Button>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+                        Opens /happy-wall/create?template={slug || "…"}
+                      </Typography>
+                    </Box>
+                  )}
+
                   {(howTitle || howDescription) && (
                     <Box sx={previewSectionSx}>
                       <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
@@ -405,6 +484,15 @@ export function TemplateEditorSection({
                       <Typography variant="subtitle2">
                         {examplesTitle}
                       </Typography>
+                    </Box>
+                  )}
+
+                  {finalTitle && (
+                    <Box sx={previewSectionSx}>
+                      <Typography variant="caption" color="text.secondary">
+                        Final section
+                      </Typography>
+                      <Typography variant="subtitle2">{finalTitle}</Typography>
                     </Box>
                   )}
 
