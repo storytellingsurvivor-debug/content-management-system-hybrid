@@ -113,6 +113,13 @@ export interface HappyTableConfig {
   label: string;
   columns: BlogColumnDefinition[];
   groups: FieldGroup[];
+  // Column the list is sorted by, newest first (default "id").
+  orderBy?: string;
+  // Boolean column at most one row may have true (partial unique index):
+  // saving a row with it on first turns it off on the other rows.
+  singleActiveColumn?: string;
+  // Form values for a new row (e.g. the table's column defaults).
+  defaults?: Record<string, unknown>;
 }
 
 export const HAPPY_TABLES: Record<
@@ -140,6 +147,8 @@ const MULTILINE_NAMES = new Set([
   "short_description",
   "starter_prompt",
   "seo_description",
+  // happy_chat_ai_config
+  "notes",
 ]);
 
 export function isMultilineField(column: BlogColumnDefinition): boolean {
@@ -258,7 +267,7 @@ export function toHappyPayload(
       continue;
     }
 
-    payload[column.name] = text;
+    payload[column.name] = text === "" && column.nullable ? null : text;
   }
   return payload;
 }
