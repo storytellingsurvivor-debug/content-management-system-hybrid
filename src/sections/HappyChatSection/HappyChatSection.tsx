@@ -12,6 +12,7 @@ import { TemplatesSection } from "@/sections/TemplatesSection/TemplatesSection";
 import { HappyTableEditor } from "@/sections/HappySpotsSection/HappyTableEditor";
 import { useHappyTable } from "@/sections/HappySpotsSection/useHappyTable";
 import { HappyChatAiConfigPanel } from "./HappyChatAiConfigPanel";
+import { HappyChatConversationsPanel } from "./HappyChatConversationsPanel";
 
 interface HappyChatSectionProps {
   isConnected: boolean;
@@ -22,9 +23,12 @@ interface HappyChatSectionProps {
 
 const LANGUAGES = ["all", "fr", "en"] as const;
 
-type HappyChatPanel = "situations" | "aiConfig";
+type HappyChatPanel = "situations" | "aiConfig" | "conversations";
 
-/** Happy Chat tab: situation pages and the chat's AI config. */
+/**
+ * Happy Chat tab: situation pages, the chat's AI config and the visitors'
+ * conversations (read-only).
+ */
 export function HappyChatSection(props: HappyChatSectionProps) {
   const [panel, setPanel] = useState<HappyChatPanel>("situations");
 
@@ -37,12 +41,11 @@ export function HappyChatSection(props: HappyChatSectionProps) {
       >
         <Tab label="Situations" value="situations" />
         <Tab label="AI config" value="aiConfig" />
+        <Tab label="Conversations" value="conversations" />
       </Tabs>
-      {panel === "situations" ? (
-        <SituationsPanel {...props} />
-      ) : (
-        <HappyChatAiConfigPanel {...props} />
-      )}
+      {panel === "situations" && <SituationsPanel {...props} />}
+      {panel === "aiConfig" && <HappyChatAiConfigPanel {...props} />}
+      {panel === "conversations" && <HappyChatConversationsPanel {...props} />}
     </>
   );
 }
