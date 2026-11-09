@@ -31,7 +31,12 @@ export function HappyChatSection({
   environment,
   onFeedback,
 }: HappyChatSectionProps) {
-  const situations = useHappyTable(client, HAPPY_CHAT_SITUATION_CONFIG, environment, onFeedback);
+  const situations = useHappyTable(
+    client,
+    HAPPY_CHAT_SITUATION_CONFIG,
+    environment,
+    onFeedback,
+  );
   const [language, setLanguage] = useState<(typeof LANGUAGES)[number]>("all");
 
   useEffect(() => {
@@ -54,9 +59,10 @@ export function HappyChatSection({
   return (
     <>
       <Alert severity="info" sx={{ mb: 2 }}>
-        Each situation needs a FR and an EN row sharing the same translation key. Only
-        rows with &quot;Is Active&quot; on appear on the site (within a minute). The starter is
-        prefilled in the chat and never sent automatically: keep it in the visitor&apos;s voice.
+        Each language has its own row and slug. Only rows with &quot;Is
+        Active&quot; on appear on the site (within a minute). The starter is
+        prefilled in the chat and never sent automatically: keep it in the
+        visitor&apos;s voice.
       </Alert>
 
       {situations.unavailable && (
@@ -65,7 +71,12 @@ export function HappyChatSection({
         </Alert>
       )}
 
-      <Stack direction="row" spacing={1} useFlexGap sx={{ mb: 2, flexWrap: "wrap" }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        useFlexGap
+        sx={{ mb: 2, flexWrap: "wrap" }}
+      >
         {LANGUAGES.map((value) => (
           <Chip
             key={value}
