@@ -1,9 +1,11 @@
 # Happy Chat tables and the CMS key
 
-The **Happy Chat** tab has two panels:
+The **Happy Chat** tab has three panels:
 
 - **Situations**: `public.happy_chat_situation`, the situation pages, active and inactive.
 - **AI config**: `public.happy_chat_ai_config`, the settings the chat uses: model, prompt, limits and author.
+- **Conversations** (read-only): `public.happy_chat_conversation` and
+  `public.happy_chat_message`, the visitors' chats and their messages.
 
 The CMS lists every row it reads and does not filter on `is_active`.
 Row Level Security (RLS) on the database decides what the CMS key can read.
@@ -59,3 +61,25 @@ the save fails, the CMS turns the previous row back on.
 
 Empty "Reasoning effort", "Text verbosity", "Temperature" and "Author image URL"
 are saved as `NULL`, so the provider defaults apply.
+
+## Conversations (read-only)
+
+The **Conversations** panel lists `happy_chat_conversation` rows, newest
+`last_message_at` first, 50 at a time, filtered by language and `is_active`.
+Selecting one loads its `happy_chat_message` rows in order (up to 1000).
+The CMS never writes to these tables.
+
+Messages are shown as they are stored: `markdown` is rendered, `text` and
+`html` are shown as text. HTML is never injected into the CMS page, since
+visitors write it.
+
+### Give the CMS read access
+
+These tables hold visitors' private messages. **Do not add an `anon` policy
+for them**: the anon key ships to every browser, so such a policy would let
+anyone read every chat. Connect the CMS with a key that bypasses RLS (the
+legacy `service_role` JWT, or a secret key) when you open this panel, and
+keep that key out of the site and out of shared browsers.
+
+If RLS hides the rows, the panel shows an empty list, not an error: with the
+anon key, "No conversation found" usually means the key cannot read them.
