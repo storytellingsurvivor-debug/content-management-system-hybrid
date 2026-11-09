@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import {
   Alert,
   Box,
@@ -62,6 +63,8 @@ interface HappyTableEditorProps {
   relationSelects?: Record<string, RelationSelect>;
   onFieldChange: (key: string, value: unknown) => void;
   onSubmit: (action: SubmitAction) => void;
+  /** Replaces the generic live preview (for tables it does not fit). */
+  renderPreview?: (values: BlogRow) => ReactNode;
 }
 
 function fieldValue(value: unknown): string {
@@ -141,6 +144,7 @@ export function HappyTableEditor({
   relationSelects = {},
   onFieldChange,
   onSubmit,
+  renderPreview,
 }: HappyTableEditorProps) {
   const columnByName = new Map(columns.map((column) => [column.name, column]));
   const groupedNames = new Set(groups.flatMap((group) => group.fields));
@@ -362,137 +366,141 @@ export function HappyTableEditor({
                 Live Preview
               </Typography>
               <Box sx={previewBoxSx}>
-                <Box sx={{ maxWidth: 720, mx: "auto" }}>
-                  <Box sx={{ display: "flex", gap: 1, mb: 1.5, flexWrap: "wrap" }}>
-                    {brand && (
-                      <Chip size="small" label={brand} color="primary" variant="outlined" />
-                    )}
-                    {language && <Chip size="small" label={language.toUpperCase()} />}
-                    {type && <Chip size="small" label={type} variant="outlined" />}
-                    {categoryLabel && (
-                      <Chip size="small" label={categoryLabel} variant="outlined" />
-                    )}
-                    {isMain && <Chip size="small" label="Main" color="secondary" />}
-                    <Chip
-                      size="small"
-                      label={isActive ? "Active" : "Inactive"}
-                      color={isActive ? "success" : "default"}
-                      variant={isActive ? "filled" : "outlined"}
-                    />
-                  </Box>
+                {renderPreview ? (
+                  renderPreview(values)
+                ) : (
+                  <Box sx={{ maxWidth: 720, mx: "auto" }}>
+                    <Box sx={{ display: "flex", gap: 1, mb: 1.5, flexWrap: "wrap" }}>
+                      {brand && (
+                        <Chip size="small" label={brand} color="primary" variant="outlined" />
+                      )}
+                      {language && <Chip size="small" label={language.toUpperCase()} />}
+                      {type && <Chip size="small" label={type} variant="outlined" />}
+                      {categoryLabel && (
+                        <Chip size="small" label={categoryLabel} variant="outlined" />
+                      )}
+                      {isMain && <Chip size="small" label="Main" color="secondary" />}
+                      <Chip
+                        size="small"
+                        label={isActive ? "Active" : "Inactive"}
+                        color={isActive ? "success" : "default"}
+                        variant={isActive ? "filled" : "outlined"}
+                      />
+                    </Box>
 
-                  <Typography variant="h5" sx={{ mb: 0.5 }}>
-                    {emoji ? `${emoji} ` : ""}
-                    {heading}
-                  </Typography>
-                  {slug && (
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                      /{slug}
+                    <Typography variant="h5" sx={{ mb: 0.5 }}>
+                      {emoji ? `${emoji} ` : ""}
+                      {heading}
                     </Typography>
-                  )}
+                    {slug && (
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                        /{slug}
+                      </Typography>
+                    )}
 
-                  {(location || lat || lng) && (
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                      📍 {location}
-                      {lat && lng ? ` (${lat}, ${lng})` : ""}
-                    </Typography>
-                  )}
+                    {(location || lat || lng) && (
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                        📍 {location}
+                        {lat && lng ? ` (${lat}, ${lng})` : ""}
+                      </Typography>
+                    )}
 
-                  {color && (
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                    {color && (
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                        <Box
+                          sx={{
+                            width: 16,
+                            height: 16,
+                            borderRadius: "50%",
+                            bgcolor: color,
+                            border: (theme) => `1px solid ${theme.palette.divider}`,
+                          }}
+                        />
+                        <Typography variant="caption" color="text.secondary">
+                          {color}
+                        </Typography>
+                      </Box>
+                    )}
+
+                    {validImage && (
+                      <Box
+                        component="img"
+                        src={validImage}
+                        alt={heading}
+                        sx={{ ...previewImageSx, mb: 2 }}
+                      />
+                    )}
+
+                    {description && (
+                      <Typography
+                        variant="body2"
+                        sx={{ whiteSpace: "pre-wrap", mb: 1.5 }}
+                      >
+                        {description}
+                      </Typography>
+                    )}
+
+                    {markdown && (
                       <Box
                         sx={{
-                          width: 16,
-                          height: 16,
-                          borderRadius: "50%",
-                          bgcolor: color,
-                          border: (theme) => `1px solid ${theme.palette.divider}`,
+                          "& p": { my: 1, lineHeight: 1.7 },
+                          "& ul, & ol": { pl: 3, my: 1 },
+                          "& img": { maxWidth: "100%", borderRadius: 1 },
                         }}
-                      />
-                      <Typography variant="caption" color="text.secondary">
-                        {color}
-                      </Typography>
-                    </Box>
-                  )}
+                      >
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {markdown}
+                        </ReactMarkdown>
+                      </Box>
+                    )}
 
-                  {validImage && (
-                    <Box
-                      component="img"
-                      src={validImage}
-                      alt={heading}
-                      sx={{ ...previewImageSx, mb: 2 }}
-                    />
-                  )}
-
-                  {description && (
-                    <Typography
-                      variant="body2"
-                      sx={{ whiteSpace: "pre-wrap", mb: 1.5 }}
-                    >
-                      {description}
-                    </Typography>
-                  )}
-
-                  {markdown && (
-                    <Box
-                      sx={{
-                        "& p": { my: 1, lineHeight: 1.7 },
-                        "& ul, & ol": { pl: 3, my: 1 },
-                        "& img": { maxWidth: "100%", borderRadius: 1 },
-                      }}
-                    >
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {markdown}
-                      </ReactMarkdown>
-                    </Box>
-                  )}
-
-                  {(mainTagLabel || tagLabels.length > 0) && (
-                    <Box sx={previewSectionSx}>
-                      <Typography variant="caption" color="text.secondary">
-                        Tags
-                      </Typography>
-                      {mainTagLabel && (
-                        <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          Main: {mainTagLabel}
+                    {(mainTagLabel || tagLabels.length > 0) && (
+                      <Box sx={previewSectionSx}>
+                        <Typography variant="caption" color="text.secondary">
+                          Tags
                         </Typography>
-                      )}
-                      {tagLabels.length > 0 && (
-                        <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
-                          {tagLabels.map((label) => (
-                            <Chip key={label} size="small" label={label} variant="outlined" />
-                          ))}
-                        </Box>
-                      )}
-                    </Box>
-                  )}
-                  <ListPreview label="Article blog slugs" items={articleSlugs} />
+                        {mainTagLabel && (
+                          <Typography variant="body2" sx={{ mb: 0.5 }}>
+                            Main: {mainTagLabel}
+                          </Typography>
+                        )}
+                        {tagLabels.length > 0 && (
+                          <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+                            {tagLabels.map((label) => (
+                              <Chip key={label} size="small" label={label} variant="outlined" />
+                            ))}
+                          </Box>
+                        )}
+                      </Box>
+                    )}
+                    <ListPreview label="Article blog slugs" items={articleSlugs} />
 
-                  {(metadataTitle || metadataDescription || metadataKeywords) && (
-                    <Box sx={previewSectionSx}>
-                      <Typography variant="caption" color="text.secondary">
-                        Metadata
-                      </Typography>
-                      {metadataTitle && (
-                        <Typography variant="subtitle2">{metadataTitle}</Typography>
-                      )}
-                      {metadataDescription && (
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{ whiteSpace: "pre-wrap" }}
-                        >
-                          {metadataDescription}
+                    {(metadataTitle || metadataDescription || metadataKeywords) && (
+                      <Box sx={previewSectionSx}>
+                        <Typography variant="caption" color="text.secondary">
+                          Metadata
                         </Typography>
-                      )}
-                      {metadataKeywords && (
-                        <Typography variant="caption" color="text.disabled">
-                          {metadataKeywords}
-                        </Typography>
-                      )}
-                    </Box>
-                  )}
-                </Box>
+                        {metadataTitle && (
+                          <Typography variant="subtitle2">{metadataTitle}</Typography>
+                        )}
+                        {metadataDescription && (
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ whiteSpace: "pre-wrap" }}
+                          >
+                            {metadataDescription}
+                          </Typography>
+                        )}
+                        {metadataKeywords && (
+                          <Typography variant="caption" color="text.disabled">
+                            {metadataKeywords}
+                          </Typography>
+                        )}
+                      </Box>
+                    )}
+                  </Box>
+                )}
               </Box>
             </Box>
           </Box>
