@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Box, Chip, Stack } from "@mui/material";
+import { Alert, Chip, Stack } from "@mui/material";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { EnvironmentLabel } from "@/types/connection";
 import {
@@ -20,9 +20,11 @@ interface HappyChatSectionProps {
 }
 
 const LANGUAGES = ["all", "fr", "en"] as const;
-const CATEGORIES = ["all", "personal", "relationships", "work", "shared_moments"] as const;
 
-/** Happy Chat situation pages: list, filter, create, edit, publish. */
+/**
+ * Happy Chat situation pages: list (filtered by language), create, edit,
+ * publish. The category is a free label written in the row's language.
+ */
 export function HappyChatSection({
   isConnected,
   client,
@@ -31,7 +33,6 @@ export function HappyChatSection({
 }: HappyChatSectionProps) {
   const situations = useHappyTable(client, HAPPY_CHAT_SITUATION_CONFIG, environment, onFeedback);
   const [language, setLanguage] = useState<(typeof LANGUAGES)[number]>("all");
-  const [category, setCategory] = useState<(typeof CATEGORIES)[number]>("all");
 
   useEffect(() => {
     if (!isConnected || !client) return;
@@ -43,11 +44,9 @@ export function HappyChatSection({
   const rows = useMemo(
     () =>
       situations.rows.filter(
-        (row) =>
-          (language === "all" || row.language === language) &&
-          (category === "all" || row.category === category),
+        (row) => language === "all" || row.language === language,
       ),
-    [situations.rows, language, category],
+    [situations.rows, language],
   );
 
   const config = HAPPY_CHAT_SITUATION_CONFIG;
@@ -73,15 +72,6 @@ export function HappyChatSection({
             label={value === "all" ? "All languages" : value.toUpperCase()}
             color={language === value ? "primary" : "default"}
             onClick={() => setLanguage(value)}
-          />
-        ))}
-        <Box sx={{ width: 16 }} />
-        {CATEGORIES.map((value) => (
-          <Chip
-            key={value}
-            label={value === "all" ? "All categories" : value}
-            color={category === value ? "primary" : "default"}
-            onClick={() => setCategory(value)}
           />
         ))}
       </Stack>

@@ -25,7 +25,7 @@ const SITUATION_COLUMNS: BlogColumnDefinition[] = [
   col("language", "Language", "text", true),
   col("translation_key", "Translation key (same for FR + EN, e.g. difficult-day)", "text", true),
   col("slug", "Slug (localized, a-z 0-9 -)", "text", true),
-  col("category", "Category", "text", true),
+  col("category", "Category label, in the row's language (e.g. Au travail / At work)", "text", true),
   col("sort_order", "Sort order (ascending)", "number", true),
   col("title", "Title (H1, the question answered)", "text", true),
   col("subtitle", "Subtitle", "text"),
@@ -57,16 +57,7 @@ export const HAPPY_CHAT_SITUATION_CONFIG: HappyTableConfig = {
 
 const option = (value: string, label = value) => ({ value, label });
 
-/** Dropdowns for the constrained text columns (same values as the DB checks). */
+/** Dropdown for the language column (same values as the DB check). */
 export const HAPPY_CHAT_SITUATION_SELECTS = {
   language: { multiple: false, options: [option("fr", "Français"), option("en", "English")] },
-  category: {
-    multiple: false,
-    options: [
-      option("personal", "Personal (Pour moi)"),
-      option("relationships", "Relationships (Mes relations)"),
-      option("work", "Work (Au travail)"),
-      option("shared_moments", "Shared moments (Moments à partager)"),
-    ],
-  },
 };
