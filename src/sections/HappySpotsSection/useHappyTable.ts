@@ -49,11 +49,17 @@ export function useHappyTable(
   environment: EnvironmentLabel,
   onFeedback: (message: string | null) => void,
 ): HappyTableState {
-  const { table, columns } = config;
+  const { table, columns, singleActiveColumn } = config;
+  const orderBy = config.orderBy ?? "id";
+  const defaults = config.defaults;
+  const emptyForm = useCallback(
+    (): BlogRow => ({ ...rowToForm(null, columns), ...defaults }),
+    [columns, defaults],
+  );
   const [rows, setRows] = useState<BlogRow[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
   const [mode, setMode] = useState<EditorMode>("create");
-  const [form, setForm] = useState<BlogRow>(() => rowToForm(null, columns));
+  const [form, setForm] = useState<BlogRow>(() => emptyForm());
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +71,7 @@ export function useHappyTable(
     const { data, error: loadError } = await client
       .from(table)
       .select("*")
-      .order("id", { ascending: false })
+      .order(orderBy, { ascending: false })
       .limit(200);
 
     if (loadError) {
@@ -88,11 +94,11 @@ export function useHappyTable(
         return prev;
       }
       setMode("create");
-      setForm(rowToForm(null, columns));
+      setForm(emptyForm());
       return "";
     });
     setLoading(false);
-  }, [client, table, columns]);
+  }, [client, table, columns, orderBy, emptyForm]);
 
   const select = useCallback(
     (value: string) => {
@@ -100,7 +106,7 @@ export function useHappyTable(
       setSelectedId(value);
       if (!value) {
         setMode("create");
-        setForm(rowToForm(null, columns));
+        setForm(emptyForm());
         return;
       }
       const selected = rows.find((row) => rowSelectionValue(row) === value);
@@ -108,16 +114,16 @@ export function useHappyTable(
       setMode("edit");
       setForm(rowToForm(selected, columns));
     },
-    [rows, columns],
+    [rows, columns, emptyForm],
   );
 
   const createNew = useCallback(() => {
     setError(null);
     setSelectedId("");
     setMode("create");
-    setForm(rowToForm(null, columns));
+    setForm(emptyForm());
     onFeedback(`${config.label} create mode enabled.`);
-  }, [columns, config.label, onFeedback]);
+  }, [emptyForm, config.label, onFeedback]);
 
   const changeField = useCallback((key: string, value: unknown) => {
     setForm((previous) => ({ ...previous, [key]: value }));
@@ -178,7 +184,30 @@ export function useHappyTable(
       }
 
       setSubmitting(true);
+      // Rows whose single-active flag we turned off, to restore if the write fails.
+      let deactivatedIds: Array<string | number> = [];
       try {
+        // A partial unique index allows one active row: turn the others off
+        // first, otherwise activating this row is rejected by the database.
+        if (
+          singleActiveColumn &&
+          action !== "delete" &&
+          payload[singleActiveColumn] === true
+        ) {
+          const current = action === "update" ? resolveFilter() : null;
+          let others = client
+            .from(table)
+            .update({ [singleActiveColumn]: false })
+            .eq(singleActiveColumn, true);
+          if (current) others = others.neq(current.field, current.value);
+          const { data: turnedOff, error: deactivateError } =
+            await others.select("id");
+          if (deactivateError) throw deactivateError;
+          deactivatedIds = (turnedOff ?? []).map(
+            (row) => (row as BlogRow).id as string | number,
+          );
+        }
+
         if (action === "create") {
           const { data, error: createError } = await client
             .from(table)
@@ -224,17 +253,42 @@ export function useHappyTable(
           onFeedback(`${config.label} deleted successfully.`);
           setSelectedId("");
           setMode("create");
-          setForm(rowToForm(null, columns));
+          setForm(emptyForm());
         }
 
+        if (deactivatedIds.length > 0) {
+          onFeedback(
+            `${config.label} saved. ${deactivatedIds.length} other active row(s) turned off.`,
+          );
+        }
+        deactivatedIds = [];
         await load();
       } catch (submitError) {
+        if (singleActiveColumn && deactivatedIds.length > 0) {
+          // Best effort: put the previously active row(s) back.
+          await client
+            .from(table)
+            .update({ [singleActiveColumn]: true })
+            .in("id", deactivatedIds);
+        }
         setError(readableError(submitError, "Failed to submit to Supabase."));
       } finally {
         setSubmitting(false);
       }
     },
-    [client, form, columns, table, config.label, confirmProd, resolveFilter, load, onFeedback],
+    [
+      client,
+      form,
+      columns,
+      table,
+      singleActiveColumn,
+      emptyForm,
+      config.label,
+      confirmProd,
+      resolveFilter,
+      load,
+      onFeedback,
+    ],
   );
 
   return {

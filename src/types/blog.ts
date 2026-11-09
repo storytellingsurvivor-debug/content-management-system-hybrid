@@ -35,6 +35,8 @@ export interface BlogColumnDefinition {
   uiType: FieldUiType;
   required: boolean;
   readOnly: boolean;
+  // Empty input is saved as NULL instead of "" (nullable text/enum columns).
+  nullable?: boolean;
 }
 
 export interface BlogRow {

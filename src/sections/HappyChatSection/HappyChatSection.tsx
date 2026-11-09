@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Chip, Stack } from "@mui/material";
+import { Alert, Chip, Stack, Tab, Tabs } from "@mui/material";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { EnvironmentLabel } from "@/types/connection";
 import {
@@ -11,6 +11,7 @@ import {
 import { TemplatesSection } from "@/sections/TemplatesSection/TemplatesSection";
 import { HappyTableEditor } from "@/sections/HappySpotsSection/HappyTableEditor";
 import { useHappyTable } from "@/sections/HappySpotsSection/useHappyTable";
+import { HappyChatAiConfigPanel } from "./HappyChatAiConfigPanel";
 
 interface HappyChatSectionProps {
   isConnected: boolean;
@@ -21,11 +22,37 @@ interface HappyChatSectionProps {
 
 const LANGUAGES = ["all", "fr", "en"] as const;
 
+type HappyChatPanel = "situations" | "aiConfig";
+
+/** Happy Chat tab: situation pages and the chat's AI config. */
+export function HappyChatSection(props: HappyChatSectionProps) {
+  const [panel, setPanel] = useState<HappyChatPanel>("situations");
+
+  return (
+    <>
+      <Tabs
+        value={panel}
+        onChange={(_, value: HappyChatPanel) => setPanel(value)}
+        sx={{ mb: 2 }}
+      >
+        <Tab label="Situations" value="situations" />
+        <Tab label="AI config" value="aiConfig" />
+      </Tabs>
+      {panel === "situations" ? (
+        <SituationsPanel {...props} />
+      ) : (
+        <HappyChatAiConfigPanel {...props} />
+      )}
+    </>
+  );
+}
+
 /**
- * Happy Chat situation pages: list (filtered by language), create, edit,
- * publish. The category is a free label written in the row's language.
+ * Happy Chat situation pages, active and inactive: list (filtered by
+ * language), create, edit, publish. The category is a free label written
+ * in the row's language.
  */
-export function HappyChatSection({
+function SituationsPanel({
   isConnected,
   client,
   environment,
@@ -55,6 +82,11 @@ export function HappyChatSection({
   );
 
   const config = HAPPY_CHAT_SITUATION_CONFIG;
+  // The site's read policy only exposes active rows. If the CMS key gets
+  // nothing else, inactive drafts silently vanish from the list.
+  const allActive =
+    situations.rows.length > 0 &&
+    situations.rows.every((row) => row.is_active === true);
 
   return (
     <>
@@ -64,6 +96,14 @@ export function HappyChatSection({
         prefilled in the chat and never sent automatically: keep it in the
         visitor&apos;s voice.
       </Alert>
+
+      {!situations.loading && allActive && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Every row loaded is active. If inactive situations are missing here,
+          the connected key can only read active rows: add the CMS policy from
+          docs/happy-chat.md to this project (staging and prod).
+        </Alert>
+      )}
 
       {situations.unavailable && (
         <Alert severity="warning" sx={{ mb: 2 }}>
