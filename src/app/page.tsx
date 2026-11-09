@@ -8,6 +8,7 @@ import { VisitsSection } from "@/sections/VisitsSection/VisitsSection";
 import { BucketSection } from "@/sections/BucketSection/BucketSection";
 import { ConnectionSection } from "@/sections/ConnectionSection/ConnectionSection";
 import { ContentSection } from "@/sections/ContentSection/ContentSection";
+import { HappyChatSection } from "@/sections/HappyChatSection/HappyChatSection";
 import { HappyDatesSection } from "@/sections/HappyDatesSection/HappyDatesSection";
 import { HappySpotsSection } from "@/sections/HappySpotsSection/HappySpotsSection";
 import { HappyWallSection } from "@/sections/HappyWallSection/HappyWallSection";
@@ -51,6 +52,7 @@ type WorkspaceTab =
   | "templates"
   | "happy"
   | "happyDates"
+  | "happyChat"
   | "happyWall"
   | "tickets"
   | "visits";
@@ -238,6 +240,7 @@ export default function Home() {
     templates: Boolean(features?.templateTable),
     happy: Boolean(features?.hasSpots),
     happyDates: Boolean(features?.hasDates),
+    happyChat: Boolean(features?.hasChatSituations),
     happyWall: Boolean(features?.wallTable),
     // The tickets/browsers tables show a graceful warning inside their own
     // section if a connected DB happens not to have them, so the tabs stay
@@ -950,6 +953,9 @@ export default function Home() {
           {features?.hasDates && (
             <Tab label="Happy Dates" value="happyDates" />
           )}
+          {features?.hasChatSituations && (
+            <Tab label="Happy Chat" value="happyChat" />
+          )}
           {features?.wallTable && <Tab label="Happy Wall" value="happyWall" />}
           {/* ml:auto pushes Tickets and every tab after it (Visits) to the
               right, so both sit at the flex end of the tab bar. */}
@@ -1063,6 +1069,15 @@ export default function Home() {
 
       {safeTab === "happyDates" && (
         <HappyDatesSection
+          isConnected={isConnected}
+          client={supabaseClient}
+          environment={connectionValues.environment}
+          onFeedback={setFeedbackMessage}
+        />
+      )}
+
+      {safeTab === "happyChat" && (
+        <HappyChatSection
           isConnected={isConnected}
           client={supabaseClient}
           environment={connectionValues.environment}

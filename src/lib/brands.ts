@@ -39,6 +39,7 @@ export interface WorkspaceFeatures {
   wallTable: string | null;
   hasSpots: boolean;
   hasDates: boolean;
+  hasChatSituations: boolean;
 }
 
 async function tableExists(
@@ -66,13 +67,15 @@ async function firstExistingTable(
 export async function detectWorkspaceFeatures(
   client: SupabaseClient,
 ): Promise<WorkspaceFeatures> {
-  const [templateTable, wallTable, hasSpots, hasDates] = await Promise.all([
-    firstExistingTable(client, TEMPLATE_TABLE_CANDIDATES),
-    firstExistingTable(client, WALL_TABLE_CANDIDATES),
-    tableExists(client, "happy_spot"),
-    tableExists(client, "happy_date"),
-  ]);
-  return { templateTable, wallTable, hasSpots, hasDates };
+  const [templateTable, wallTable, hasSpots, hasDates, hasChatSituations] =
+    await Promise.all([
+      firstExistingTable(client, TEMPLATE_TABLE_CANDIDATES),
+      firstExistingTable(client, WALL_TABLE_CANDIDATES),
+      tableExists(client, "happy_spot"),
+      tableExists(client, "happy_date"),
+      tableExists(client, "happy_chat_situation"),
+    ]);
+  return { templateTable, wallTable, hasSpots, hasDates, hasChatSituations };
 }
 
 // Public site per brand, used to build shareable article links. Brands
