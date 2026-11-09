@@ -130,7 +130,17 @@ export const HAPPY_TABLES: Record<
 };
 
 const MULTILINE_UI_TYPES = new Set(["markdown", "json", "stringArray", "numberArray"]);
-const MULTILINE_NAMES = new Set(["note", "description", "intro", "metadata_description"]);
+const MULTILINE_NAMES = new Set([
+  "note",
+  "description",
+  "intro",
+  "metadata_description",
+  // happy_chat_situation
+  "subtitle",
+  "short_description",
+  "starter_prompt",
+  "seo_description",
+]);
 
 export function isMultilineField(column: BlogColumnDefinition): boolean {
   return MULTILINE_UI_TYPES.has(column.uiType) || MULTILINE_NAMES.has(column.name);
