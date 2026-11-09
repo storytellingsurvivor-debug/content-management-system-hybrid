@@ -12,6 +12,7 @@ import {
 import { TemplatesSection } from "@/sections/TemplatesSection/TemplatesSection";
 import { HappyTableEditor } from "@/sections/HappySpotsSection/HappyTableEditor";
 import { useHappyTable } from "@/sections/HappySpotsSection/useHappyTable";
+import { HappyChatAiConfigPreview } from "./HappyChatAiConfigPreview";
 
 interface HappyChatAiConfigPanelProps {
   isConnected: boolean;
@@ -100,6 +101,7 @@ export function HappyChatAiConfigPanel({
         relationSelects={HAPPY_CHAT_AI_CONFIG_SELECTS}
         onFieldChange={aiConfigs.changeField}
         onSubmit={aiConfigs.submit}
+        renderPreview={(values) => <HappyChatAiConfigPreview values={values} />}
       />
     </>
   );
