@@ -128,6 +128,7 @@ function toDayKey(value: string | null | undefined): string | null {
 function perDaySeries(
   rows: { created_at?: string | null }[],
   days = 30,
+  endMs = Date.now(),
 ): DayBucket[] {
   const counts = new Map<string, number>();
   for (const row of rows) {
@@ -136,7 +137,7 @@ function perDaySeries(
   }
 
   const series: DayBucket[] = [];
-  const today = new Date();
+  const today = new Date(endMs);
   today.setUTCHours(0, 0, 0, 0);
   for (let i = days - 1; i >= 0; i -= 1) {
     const d = new Date(today);
@@ -282,10 +283,14 @@ export interface VisitsAnalytics {
   os: DistributionSlice[];
   sources: DistributionSlice[]; // host of url_source
   landingUrls: DistributionSlice[]; // raw url_source
-  perDay: DayBucket[]; // new visitors per day, last 30 days
+  perDay: DayBucket[]; // new visitors per day, `days` days ending at `endMs`
 }
 
-export function computeVisitsAnalytics(rows: BrowserRow[]): VisitsAnalytics {
+export function computeVisitsAnalytics(
+  rows: BrowserRow[],
+  // Window of the daily series; defaults to the 30 days ending today.
+  series: { days?: number; endMs?: number } = {},
+): VisitsAnalytics {
   const now = Date.now();
   const day = 24 * 60 * 60 * 1000;
 
@@ -316,6 +321,6 @@ export function computeVisitsAnalytics(rows: BrowserRow[]): VisitsAnalytics {
       normLabel(urlHost(b.url_source), "Direct / none"),
     ),
     landingUrls: distribution(rows, (b) => normLabel(b.url_source, "—")),
-    perDay: perDaySeries(rows),
+    perDay: perDaySeries(rows, series.days, series.endMs),
   };
 }
