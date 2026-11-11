@@ -105,6 +105,19 @@ Limits: the CMS loads the newest 20 000 `blog_views` rows, so all-time totals
 on a very large table cover that window only. Reads are first reads per browser
 (`blog_views` is de-duplicated), not page hits.
 
+## Visits tab (site traffic)
+
+The **Visits** tab reads `browsers` directly — every site visitor, not just
+blog readers. A **date range** (Today, 7 / 30 / 90 days, All time, or a custom
+From–To) is applied in the database query, so only the rows of that period are
+downloaded; it opens on the last 7 days. **Came from** narrows everything to
+one source (the host of `url_source`). **Latest visitors** lists the newest
+rows first: when, source, landing URL, device, browser and OS.
+
+In the Performance overview, the ranking has a **Last read** filter (24 hours,
+3 / 7 / 14 / 30 / 90 days) that keeps the articles whose latest human read
+falls in that window, most recently read first.
+
 ## What it deliberately does not do
 
 No UTM breakdown and no referrer domains: neither is stored. `url_source` is the

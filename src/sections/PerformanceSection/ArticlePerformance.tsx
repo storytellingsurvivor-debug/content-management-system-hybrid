@@ -6,6 +6,7 @@ import {
   Box,
   Button,
   Chip,
+  MenuItem,
   Paper,
   Table,
   TableBody,
@@ -14,6 +15,7 @@ import {
   TableHead,
   TableRow,
   TableSortLabel,
+  TextField,
   Tooltip,
   Typography,
 } from "@mui/material";
@@ -113,6 +115,17 @@ const COLUMNS: { key: SortKey; label: string; hint: string }[] = [
   },
 ];
 
+// "Last read" windows for the ranking: keep articles whose latest human read
+// is less than `days` days old.
+const LAST_READ_RANGES: { days: number; label: string }[] = [
+  { days: 1, label: "Last 24 hours" },
+  { days: 3, label: "Last 3 days" },
+  { days: 7, label: "Last 7 days" },
+  { days: 14, label: "Last 14 days" },
+  { days: 30, label: "Last 30 days" },
+  { days: 90, label: "Last 90 days" },
+];
+
 // Missing values (never read, no baseline…) always sort last.
 function sortValue(a: ArticlePerf, key: SortKey): number | null {
   return a[key];
@@ -148,6 +161,8 @@ export function ArticlePerformance({
   const [sortDesc, setSortDesc] = useState(true);
   const [healthFilter, setHealthFilter] = useState<ArticleHealth | "">("");
   const [categoryFilter, setCategoryFilter] = useState<string>("");
+  // 0 = any time; otherwise only articles read within that many days.
+  const [lastReadDays, setLastReadDays] = useState(0);
 
   const perf = useMemo(
     () => computeArticlePerformance(articles, viewRows, browsers),
@@ -165,7 +180,10 @@ export function ArticlePerformance({
     const filtered = perf.filter(
       (a) =>
         (!healthFilter || a.health === healthFilter) &&
-        (!categoryFilter || a.category === categoryFilter),
+        (!categoryFilter || a.category === categoryFilter) &&
+        (lastReadDays === 0 ||
+          (a.daysSinceLastRead != null &&
+            a.daysSinceLastRead < lastReadDays)),
     );
     return [...filtered].sort((a, b) => {
       const va = sortValue(a, sortKey);
@@ -175,7 +193,7 @@ export function ArticlePerformance({
       if (vb == null) return -1;
       return sortDesc ? vb - va : va - vb;
     });
-  }, [perf, healthFilter, categoryFilter, sortKey, sortDesc]);
+  }, [perf, healthFilter, categoryFilter, lastReadDays, sortKey, sortDesc]);
 
   if (perf.length === 0) {
     return (
@@ -190,6 +208,16 @@ export function ArticlePerformance({
   const dormantLive = perf.filter(
     (a) => a.health === "dormant" && a.isLive !== false,
   ).length;
+
+  // Picking a window answers "what was read lately", so list the most
+  // recently read first; the column headers can still re-sort afterwards.
+  const handleLastReadRange = (days: number) => {
+    setLastReadDays(days);
+    if (days > 0) {
+      setSortKey("daysSinceLastRead");
+      setSortDesc(false);
+    }
+  };
 
   const handleSort = (key: SortKey) => {
     if (key === sortKey) setSortDesc((d) => !d);
@@ -324,6 +352,21 @@ export function ArticlePerformance({
           />
         )}
         <Box sx={{ flex: 1 }} />
+        <TextField
+          select
+          size="small"
+          label="Last read"
+          value={lastReadDays}
+          onChange={(event) => handleLastReadRange(Number(event.target.value))}
+          sx={{ minWidth: 170 }}
+        >
+          <MenuItem value={0}>Any time</MenuItem>
+          {LAST_READ_RANGES.map((range) => (
+            <MenuItem key={range.days} value={range.days}>
+              {range.label}
+            </MenuItem>
+          ))}
+        </TextField>
         <Button
           size="small"
           startIcon={<DownloadIcon />}
@@ -433,6 +476,11 @@ export function ArticlePerformance({
                   <TableCell align="right">{formatDays(a.ageDays)}</TableCell>
                   <TableCell
                     align="right"
+                    title={
+                      a.lastReadAt
+                        ? new Date(a.lastReadAt).toLocaleString()
+                        : undefined
+                    }
                     sx={{
                       color:
                         a.daysSinceLastRead == null ||
@@ -449,6 +497,12 @@ export function ArticlePerformance({
           </TableBody>
         </Table>
       </TableContainer>
+      {ranked.length === 0 && (
+        <Alert severity="info" sx={{ mt: 1 }}>
+          No article matches these filters
+          {lastReadDays > 0 ? " — none was read in that period" : ""}.
+        </Alert>
+      )}
 
       <Typography
         variant="caption"
